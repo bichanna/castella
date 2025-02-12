@@ -1,0 +1,20 @@
+[package]
+name = "castella"
+version = "0.0.0"
+edition = "2021"
+
+description = "Basically C programming language peppered with my preferences"
+license-file = "LICENSE.txt"
+categories = ["compilers"]
+keywords = ["language", "programming language"]
+authors = ["Nobuharu Shimazu <nobu.bichanna@gmail.com>"]
+repository = "https://github.com/bichanna/castella"
+readme = "README.md"
+
+[dependencies]
+tamago = { path = "tamago" }
+
+[workspace]
+members = [
+  "tamago"
+]

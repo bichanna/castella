@@ -1,0 +1,11 @@
+[package]
+name = "tamago"
+version = "0.0.0"
+edition = "2021"
+
+description = "Library for generating C code"
+license-file = "LICENSE.txt"
+authors = ["Nobuharu Shimazu <nobu.bichanna@gmail.com>"]
+readme = "README.md"
+
+[dependencies]
