@@ -9,3 +9,4 @@ authors = ["Nobuharu Shimazu <nobu.bichanna@gmail.com>"]
 readme = "README.md"
 
 [dependencies]
+tamacro = { path = "tamacro" }

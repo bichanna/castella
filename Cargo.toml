@@ -16,5 +16,6 @@ tamago = { path = "tamago" }
 
 [workspace]
 members = [
-  "tamago"
+  "tamago",
+  "tamago/tamacro"
 ]
