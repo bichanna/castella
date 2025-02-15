@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! This module is provides ways to express types.
+//! This module provides ways to express types.
 
 use std::fmt::{self, Write};
 

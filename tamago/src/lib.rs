@@ -21,5 +21,6 @@
 //! Library for generating C code
 
 mod comment;
+mod expr;
 mod formatter;
 mod types;
