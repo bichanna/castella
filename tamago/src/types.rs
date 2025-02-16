@@ -165,14 +165,14 @@ impl Format for BaseType {
 }
 
 #[derive(Debug, Clone, Copy, DisplayFromFormat)]
-pub enum LeftTypeQualifier {
+pub enum TypeQualifier {
     Volatile,
     Const,
 }
 
-impl Format for LeftTypeQualifier {
+impl Format for TypeQualifier {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use LeftTypeQualifier::*;
+        use TypeQualifier::*;
         match self {
             Volatile => write!(fmt, "volatile"),
             Const => write!(fmt, "const"),
@@ -180,77 +180,62 @@ impl Format for LeftTypeQualifier {
     }
 }
 
-#[derive(Debug, Clone, Copy, DisplayFromFormat)]
-pub enum RightTypeQualifier {
-    Pointer,
-    Array(usize),
-}
-
-impl Format for RightTypeQualifier {
-    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use RightTypeQualifier::*;
-        match self {
-            Pointer => write!(fmt, "*"),
-            Array(size) => write!(fmt, "[{size}]"),
-        }
-    }
-}
-
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Type {
-    base: BaseType,
-    left_qualifiers: Vec<LeftTypeQualifier>,
-    right_qualifiers: Vec<RightTypeQualifier>,
+    pub base: BaseType,
+    pub qualifiers: Vec<TypeQualifier>,
+    pub pointers: u8,
+    pub array: usize,
 }
 
 impl Type {
     pub fn new(base: BaseType) -> Self {
         Self {
             base,
-            left_qualifiers: vec![],
-            right_qualifiers: vec![],
+            qualifiers: vec![],
+            pointers: 0,
+            array: 0,
         }
     }
 
-    pub fn push_left_type_qualifier(&mut self, q: LeftTypeQualifier) -> &mut Self {
-        self.left_qualifiers.push(q);
-        self
-    }
-
-    pub fn push_right_type_qualifier(&mut self, q: RightTypeQualifier) -> &mut Self {
-        self.right_qualifiers.push(q);
+    pub fn push_type_qualifier(&mut self, q: TypeQualifier) -> &mut Self {
+        self.qualifiers.push(q);
         self
     }
 
     pub fn make_volatile(&mut self) -> &mut Self {
-        self.push_left_type_qualifier(LeftTypeQualifier::Volatile)
+        self.push_type_qualifier(TypeQualifier::Volatile)
     }
 
     pub fn make_const(&mut self) -> &mut Self {
-        self.push_left_type_qualifier(LeftTypeQualifier::Const)
+        self.push_type_qualifier(TypeQualifier::Const)
     }
 
     pub fn make_pointer(&mut self) -> &mut Self {
-        self.push_right_type_qualifier(RightTypeQualifier::Pointer)
+        self.pointers += 1;
+        self
     }
 
     pub fn make_array(&mut self, size: usize) -> &mut Self {
-        self.push_right_type_qualifier(RightTypeQualifier::Array(size))
+        self.array = size;
+        self
+    }
+
+    pub fn is_array(&self) -> bool {
+        self.array != 0
     }
 }
 
 impl Format for Type {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        for q in &self.left_qualifiers {
+        for q in &self.qualifiers {
             q.format(fmt)?;
             write!(fmt, " ")?;
         }
 
         self.base.format(fmt)?;
 
-        for q in &self.right_qualifiers {
-            q.format(fmt)?;
-        }
+        write!(fmt, "{}", "*".repeat(self.pointers.into()))?;
 
         Ok(())
     }

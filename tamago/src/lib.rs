@@ -23,4 +23,5 @@
 mod comment;
 mod expr;
 mod formatter;
+mod structs;
 mod types;

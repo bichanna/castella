@@ -28,10 +28,10 @@ use tamacro::DisplayFromFormat;
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Comment {
     /// The comment string
-    comment: String,
+    pub comment: String,
 
     /// Whether a heading comment or not
-    is_heading: bool,
+    pub is_heading: bool,
 }
 
 impl Comment {
@@ -79,7 +79,7 @@ impl Format for Comment {
 
 #[derive(Debug, Clone)]
 pub struct DocComment {
-    docs: Vec<String>,
+    pub docs: Vec<String>,
 }
 
 impl DocComment {
