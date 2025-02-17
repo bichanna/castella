@@ -77,6 +77,10 @@ impl Variable {
         self.value = Some(Expr::Raw(value));
         self
     }
+
+    pub fn to_type(&self) -> Type {
+        self.t.clone()
+    }
 }
 
 impl Format for Variable {

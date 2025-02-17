@@ -23,7 +23,7 @@
 
 use std::fmt::{self, Write};
 
-use crate::{DocComment, Format, Formatter, Type};
+use crate::{BaseType, DocComment, Format, Formatter, Type};
 use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]
@@ -63,6 +63,10 @@ impl Struct {
     pub fn push_field(&mut self, field: Field) -> &mut Self {
         self.fields.push(field);
         self
+    }
+
+    pub fn to_type(&self) -> Type {
+        Type::new(BaseType::Struct(self.name.clone()))
     }
 }
 
