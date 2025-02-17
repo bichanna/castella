@@ -21,6 +21,7 @@
 //! Library for generating C code
 
 mod comment;
+mod enums;
 mod expr;
 mod formatter;
 mod structs;
@@ -28,6 +29,7 @@ mod types;
 mod variable;
 
 pub use comment::{Comment, DocComment};
+pub use enums::{Enum, Variant};
 pub use expr::{AssignOp, BinOp, Expr, UnaryOp};
 pub use formatter::{Format, Formatter};
 pub use structs::{Field, Struct};

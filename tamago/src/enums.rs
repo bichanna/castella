@@ -18,8 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! This module provides means to create C structs. For now, nested anonymous structs are not
-//! supported, but this might change in the future.
+//! This module provides means to create C enums.
 
 use std::fmt::{self, Write};
 
@@ -27,30 +26,25 @@ use crate::{BaseType, DocComment, Format, Formatter, Type};
 use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]
-pub struct Struct {
-    /// The name of the struct
+pub struct Enum {
     name: String,
-
-    /// The fields of the struct
-    fields: Vec<Field>,
-
-    /// The doc comment of the struct
+    variants: Vec<Variant>,
     doc: Option<DocComment>,
 }
 
-impl Struct {
+impl Enum {
     pub fn new(name: String) -> Self {
         Self {
             name,
-            fields: vec![],
+            variants: vec![],
             doc: None,
         }
     }
 
-    pub fn new_with_fields(name: String, fields: Vec<Field>) -> Self {
+    pub fn new_with_variants(name: String, variants: Vec<Variant>) -> Self {
         Self {
             name,
-            fields,
+            variants,
             doc: None,
         }
     }
@@ -60,97 +54,84 @@ impl Struct {
         self
     }
 
-    pub fn push_field(&mut self, field: Field) -> &mut Self {
-        self.fields.push(field);
+    pub fn push_variant(&mut self, variant: Variant) -> &mut Self {
+        self.variants.push(variant);
         self
     }
 
     pub fn to_type(&self) -> Type {
-        Type::new(BaseType::Struct(self.name.clone()))
+        Type::new(BaseType::Enum(self.name.clone()))
     }
 }
 
-impl Format for Struct {
+impl Format for Enum {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         if let Some(doc) = &self.doc {
             doc.format(fmt)?;
         }
 
-        write!(fmt, "struct {}", self.name)?;
+        write!(fmt, "enum {}", self.name)?;
 
-        if !self.fields.is_empty() {
-            fmt.block(|fmt| {
-                for field in &self.fields {
-                    field.format(fmt)?;
-                }
-                Ok(())
-            })?;
-        }
+        fmt.block(|fmt| {
+            for variant in &self.variants {
+                variant.format(fmt)?;
+                writeln!(fmt, ",")?;
+            }
+
+            Ok(())
+        })?;
 
         writeln!(fmt, ";")
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Field {
-    /// The name of the field
+#[derive(Debug, Clone, DisplayFromFormat)]
+pub struct Variant {
     pub name: String,
-
-    /// The type of the field
-    pub t: Type,
-
-    /// The number of bits in the bitfield
-    pub width: Option<u8>,
-
-    /// The doc comment
+    pub value: Option<i64>,
     pub doc: Option<DocComment>,
 }
 
-impl Field {
-    pub fn new(name: String, t: Type) -> Self {
+impl Variant {
+    pub fn new(name: String) -> Self {
         Self {
             name,
-            t,
-            width: None,
+            value: None,
             doc: None,
         }
     }
 
-    pub fn new_with_width(name: String, t: Type, width: u8) -> Self {
+    pub fn new_with_value(name: String, value: i64) -> Self {
         Self {
             name,
-            t,
-            width: Some(width),
+            value: Some(value),
             doc: None,
         }
     }
 
-    pub fn set_bitfield_width(&mut self, width: u8) -> &mut Self {
-        self.width = Some(width);
+    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
+        self.doc = Some(doc);
         self
     }
 
-    pub fn to_type(&self) -> Type {
-        self.t.clone()
+    pub fn set_value(&mut self, value: i64) -> &mut Self {
+        self.value = Some(value);
+        self
     }
 }
 
-impl Format for Field {
+impl Format for Variant {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         if let Some(doc) = &self.doc {
             doc.format(fmt)?;
         }
 
-        self.t.format(fmt)?;
-        write!(fmt, " {}", self.name)?;
+        write!(fmt, "{}", self.name)?;
 
-        if let Some(w) = self.width {
-            write!(fmt, " : {w}")?;
+        if let Some(value) = self.value {
+            write!(fmt, " = {value}")?;
         }
 
-        if self.t.is_array() {
-            write!(fmt, "[{}]", self.t.array)?;
-        }
-        writeln!(fmt, ";")
+        Ok(())
     }
 }
