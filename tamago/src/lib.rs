@@ -25,3 +25,11 @@ mod expr;
 mod formatter;
 mod structs;
 mod types;
+mod variable;
+
+pub use comment::{Comment, DocComment};
+pub use expr::{AssignOp, BinOp, Expr, UnaryOp};
+pub use formatter::{Format, Formatter};
+pub use structs::{Field, Struct};
+pub use types::{BaseType, Type, TypeQualifier};
+pub use variable::Variable;

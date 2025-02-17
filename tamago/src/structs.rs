@@ -23,9 +23,7 @@
 
 use std::fmt::{self, Write};
 
-use crate::comment::DocComment;
-use crate::formatter::{Format, Formatter};
-use crate::types::Type;
+use crate::{DocComment, Format, Formatter, Type};
 use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]

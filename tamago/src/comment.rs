@@ -22,7 +22,7 @@
 
 use std::fmt::{self, Write};
 
-use crate::formatter::{Format, Formatter};
+use crate::{Format, Formatter};
 use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]

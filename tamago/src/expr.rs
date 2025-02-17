@@ -22,8 +22,7 @@
 
 use std::fmt::{self, Write};
 
-use crate::formatter::{Format, Formatter};
-use crate::types::{BaseType, Type};
+use crate::{Format, Formatter, Type};
 use tamacro::{DisplayFromConstSymbol, DisplayFromFormat, FormatFromConstSymbol};
 
 #[derive(Debug, Clone, DisplayFromFormat)]
