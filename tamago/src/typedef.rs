@@ -18,21 +18,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! Library for generating C code
+//! This module provides make C typedefs.
 
-mod comment;
-mod enums;
-mod expr;
-mod formatter;
-mod structs;
-mod typedef;
-mod types;
-mod variable;
+use std::fmt::{self, Write};
 
-pub use comment::{Comment, DocComment};
-pub use enums::{Enum, Variant};
-pub use expr::{AssignOp, BinOp, Expr, UnaryOp};
-pub use formatter::{Format, Formatter};
-pub use structs::{Field, Struct};
-pub use types::{BaseType, Type, TypeQualifier};
-pub use variable::Variable;
+use crate::{BaseType, Format, Formatter, Type};
+use tamacro::DisplayFromFormat;
+
+#[derive(Debug, Clone, DisplayFromFormat)]
+pub struct TypeDef {
+    pub t: Type,
+    pub name: String,
+}
+
+impl TypeDef {
+    pub fn new(t: Type, name: String) -> Self {
+        Self { t, name }
+    }
+
+    pub fn to_type(&self) -> Type {
+        Type::new(BaseType::TypeDef(self.name.clone()))
+    }
+}
+
+impl Format for TypeDef {
+    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        write!(fmt, "typedef ")?;
+        self.t.format(fmt)?;
+        writeln!(fmt, " {}", self.name)
+    }
+}
