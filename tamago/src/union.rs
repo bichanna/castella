@@ -18,33 +18,69 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! This module provides make C typedefs.
+//! This module provides make C unions.
 
 use std::fmt::{self, Write};
 
-use crate::{BaseType, Format, Formatter, Type};
+use crate::{BaseType, DocComment, Field, Format, Formatter, Type};
 use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]
-pub struct TypeDef {
-    pub t: Type,
+pub struct Union {
     pub name: String,
+    pub fields: Vec<Field>,
+    pub doc: Option<DocComment>,
 }
 
-impl TypeDef {
-    pub fn new(t: Type, name: String) -> Self {
-        Self { t, name }
+impl Union {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            fields: vec![],
+            doc: None,
+        }
+    }
+
+    pub fn new_with_fields(name: String, fields: Vec<Field>) -> Self {
+        Self {
+            name,
+            fields,
+            doc: None,
+        }
+    }
+
+    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn push_field(&mut self, field: Field) -> &mut Self {
+        self.fields.push(field);
+        self
     }
 
     pub fn to_type(&self) -> Type {
-        Type::new(BaseType::TypeDef(self.name.clone()))
+        Type::new(BaseType::Union(self.name.clone()))
     }
 }
 
-impl Format for TypeDef {
+impl Format for Union {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "typedef ")?;
-        self.t.format(fmt)?;
-        writeln!(fmt, " {};", self.name)
+        if let Some(doc) = &self.doc {
+            doc.format(fmt)?;
+        }
+
+        write!(fmt, "union {}", self.name)?;
+
+        if !self.fields.is_empty() {
+            fmt.block(|fmt| {
+                for field in &self.fields {
+                    field.format(fmt)?;
+                }
+                Ok(())
+            })?;
+        }
+
+        writeln!(fmt, ";")
     }
 }
