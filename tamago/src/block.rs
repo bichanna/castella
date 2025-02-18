@@ -36,6 +36,10 @@ impl Block {
         Self { stmts: vec![] }
     }
 
+    pub fn new_with_statements(stmts: Vec<Statement>) -> Self {
+        Self { stmts }
+    }
+
     pub fn merge(&mut self, other: &mut Block) -> &mut Self {
         self.stmts.append(&mut other.stmts);
         self

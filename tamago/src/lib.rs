@@ -22,6 +22,7 @@
 
 mod block;
 mod comment;
+mod conditional;
 mod enums;
 mod expr;
 mod formatter;
@@ -35,6 +36,7 @@ mod variable;
 
 pub use block::{Block, Statement};
 pub use comment::{Comment, DocComment};
+pub use conditional::{If, Switch};
 pub use enums::{Enum, Variant};
 pub use expr::{AssignOp, BinOp, Expr, UnaryOp};
 pub use formatter::{Format, Formatter};
