@@ -20,10 +20,12 @@
 
 //! Library for generating C code
 
+mod block;
 mod comment;
 mod enums;
 mod expr;
 mod formatter;
+mod function;
 mod preprocessor;
 mod structs;
 mod typedef;
@@ -31,10 +33,12 @@ mod types;
 mod union;
 mod variable;
 
+pub use block::{Block, Statement};
 pub use comment::{Comment, DocComment};
 pub use enums::{Enum, Variant};
 pub use expr::{AssignOp, BinOp, Expr, UnaryOp};
 pub use formatter::{Format, Formatter};
+pub use function::{Function, Parameter};
 pub use preprocessor::{Error, FuncMacro, Include, Macro, ObjMacro, Pragma};
 pub use structs::{Field, Struct};
 pub use typedef::TypeDef;
