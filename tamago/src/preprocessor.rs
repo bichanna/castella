@@ -22,7 +22,7 @@
 
 use std::fmt::{self, Write};
 
-use crate::{DocComment, Format, Formatter};
+use crate::{Block, DocComment, Format, Formatter, GlobalStatement, Scope, Statement};
 use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]
@@ -74,36 +74,36 @@ impl Format for Include {
 }
 
 #[derive(Debug, Clone, DisplayFromFormat)]
-pub struct Error {
+pub struct ErrorDirective {
     pub message: String,
 }
 
-impl Error {
+impl ErrorDirective {
     pub fn new(message: String) -> Self {
         Self { message }
     }
 }
 
-impl Format for Error {
+impl Format for ErrorDirective {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "#error {}", self.message)
+        writeln!(fmt, "#error {}", self.message)
     }
 }
 
 #[derive(Debug, Clone, DisplayFromFormat)]
-pub struct Pragma {
+pub struct PragmaDirective {
     pub raw: String,
 }
 
-impl Pragma {
+impl PragmaDirective {
     pub fn new(raw: String) -> Self {
         Self { raw }
     }
 }
 
-impl Format for Pragma {
+impl Format for PragmaDirective {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "#pragma {}", self.raw)
+        writeln!(fmt, "#pragma {}", self.raw)
     }
 }
 
@@ -283,5 +283,277 @@ impl Format for FuncMacro {
         } else {
             writeln!(fmt, "{}", self.value)
         }
+    }
+}
+#[derive(Debug, Clone, DisplayFromFormat)]
+pub enum ScopeOrBlock {
+    Scope(Scope),
+    Block(Block),
+}
+
+impl Format for ScopeOrBlock {
+    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            ScopeOrBlock::Scope(s) => s.format(fmt),
+            ScopeOrBlock::Block(b) => b.format(fmt),
+        }
+    }
+}
+
+#[derive(Debug, Clone, DisplayFromFormat)]
+pub struct IfDirective {
+    cond: String,
+    then: ScopeOrBlock,
+    other: Option<ScopeOrBlock>,
+}
+
+impl IfDirective {
+    pub fn new(cond: String) -> Self {
+        Self {
+            cond,
+            then: ScopeOrBlock::Scope(Scope::new()),
+            other: None,
+        }
+    }
+
+    pub fn new_with_empty_then_scope(cond: String) -> Self {
+        Self::new(cond)
+    }
+
+    pub fn new_with_emtpy_then_block(cond: String) -> Self {
+        Self {
+            cond,
+            then: ScopeOrBlock::Block(Block::new()),
+            other: None,
+        }
+    }
+
+    pub fn new_with_then_scope(cond: String, then: Scope) -> Self {
+        Self {
+            cond,
+            then: ScopeOrBlock::Scope(then),
+            other: None,
+        }
+    }
+
+    pub fn new_with_then_block(cond: String, block: Block) -> Self {
+        Self {
+            cond,
+            then: ScopeOrBlock::Block(block),
+            other: None,
+        }
+    }
+
+    pub fn push_global_statement(&mut self, global_stmt: GlobalStatement) -> &mut Self {
+        match &mut self.then {
+            ScopeOrBlock::Scope(ref mut then) => {
+                then.push_global_statement(global_stmt);
+            }
+            ScopeOrBlock::Block(_) => {
+                self.set_then(ScopeOrBlock::Scope(Scope::new_with_global_statements(
+                    vec![global_stmt],
+                )));
+            }
+        }
+
+        self
+    }
+
+    pub fn push_block_statement(&mut self, stmt: Statement) -> &mut Self {
+        match &mut self.then {
+            ScopeOrBlock::Block(ref mut then) => {
+                then.push_statement(stmt);
+            }
+            ScopeOrBlock::Scope(_) => {
+                self.set_then(ScopeOrBlock::Block(Block::new_with_statements(vec![stmt])));
+            }
+        }
+
+        self
+    }
+
+    pub fn set_then(&mut self, then: ScopeOrBlock) -> &mut Self {
+        self.then = then;
+        self
+    }
+
+    pub fn set_other(&mut self, other: ScopeOrBlock) -> &mut Self {
+        self.other = Some(other);
+        self
+    }
+}
+
+impl Format for IfDirective {
+    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(fmt, "#if {}", self.cond)?;
+        self.then.format(fmt)?;
+
+        if let Some(other) = &self.other {
+            writeln!(fmt, "#else")?;
+            other.format(fmt)?;
+        }
+
+        writeln!(fmt, "#endif")
+    }
+}
+
+#[derive(Debug, Clone, DisplayFromFormat)]
+pub struct IfDefDirective {
+    pub symbol: String,
+    pub then: ScopeOrBlock,
+    pub other: Option<ScopeOrBlock>,
+    pub not: bool,
+}
+
+impl IfDefDirective {
+    pub fn new(symbol: String) -> Self {
+        Self {
+            symbol,
+            then: ScopeOrBlock::Scope(Scope::new()),
+            other: None,
+            not: false,
+        }
+    }
+
+    pub fn new_with_empty_then_scope(symbol: String) -> Self {
+        Self::new(symbol)
+    }
+
+    pub fn new_with_emtpy_then_block(symbol: String) -> Self {
+        Self {
+            symbol,
+            then: ScopeOrBlock::Block(Block::new()),
+            other: None,
+            not: false,
+        }
+    }
+
+    pub fn push_global_statement(&mut self, global_stmt: GlobalStatement) -> &mut Self {
+        match &mut self.then {
+            ScopeOrBlock::Scope(ref mut then) => {
+                then.push_global_statement(global_stmt);
+            }
+            ScopeOrBlock::Block(_) => {
+                self.set_then(ScopeOrBlock::Scope(Scope::new_with_global_statements(
+                    vec![global_stmt],
+                )));
+            }
+        }
+
+        self
+    }
+
+    pub fn push_block_statement(&mut self, stmt: Statement) -> &mut Self {
+        match &mut self.then {
+            ScopeOrBlock::Block(ref mut then) => {
+                then.push_statement(stmt);
+            }
+            ScopeOrBlock::Scope(_) => {
+                self.set_then(ScopeOrBlock::Block(Block::new_with_statements(vec![stmt])));
+            }
+        }
+
+        self
+    }
+
+    pub fn set_then(&mut self, then: ScopeOrBlock) -> &mut Self {
+        self.then = then;
+        self
+    }
+
+    pub fn set_other(&mut self, other: ScopeOrBlock) -> &mut Self {
+        self.other = Some(other);
+        self
+    }
+
+    pub fn set_not(&mut self) -> &mut Self {
+        self.not = true;
+        self
+    }
+}
+
+impl Format for IfDefDirective {
+    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        if self.not {
+            writeln!(fmt, "ifndef {}", self.symbol)?;
+        } else {
+            writeln!(fmt, "#ifdef {}", self.symbol)?;
+        }
+        self.then.format(fmt)?;
+
+        if let Some(other) = &self.other {
+            writeln!(fmt, "#else")?;
+            other.format(fmt)?;
+        }
+
+        writeln!(fmt, "#endif")
+    }
+}
+
+#[derive(Debug, Clone, DisplayFromFormat)]
+pub struct LineDirective {
+    pub line: u64,
+    pub path: String,
+    pub is_system: bool,
+    pub doc: Option<DocComment>,
+}
+
+impl LineDirective {
+    pub fn new(line: u64, path: String) -> Self {
+        Self {
+            line,
+            path,
+            is_system: false,
+            doc: None,
+        }
+    }
+
+    pub fn new_system(line: u64, path: String) -> Self {
+        Self {
+            line,
+            path,
+            is_system: true,
+            doc: None,
+        }
+    }
+
+    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
+        self.doc = Some(doc);
+        self
+    }
+}
+
+impl Format for LineDirective {
+    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        if let Some(doc) = &self.doc {
+            doc.format(fmt)?;
+        }
+
+        write!(fmt, "#line {} ", self.line)?;
+
+        if self.is_system {
+            writeln!(fmt, "<{}>", self.path)?;
+        } else {
+            writeln!(fmt, "\"{}\"", self.path)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, DisplayFromFormat)]
+pub struct WarningDirective {
+    pub message: String,
+}
+
+impl WarningDirective {
+    pub fn new(message: String) -> Self {
+        Self { message }
+    }
+}
+
+impl Format for WarningDirective {
+    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(fmt, "#warning {}", self.message)
     }
 }

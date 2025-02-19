@@ -24,44 +24,61 @@
 use std::fmt::{self, Write};
 
 use crate::{
-    Comment, DoWhile, ErrorDirective, Expr, For, Format, Formatter, If, Include, Macro,
-    PragmaDirective, Switch, Variable, While,
+    Comment, DocComment, Enum, ErrorDirective, Format, Formatter, Function, IfDefDirective,
+    IfDirective, Include, LineDirective, Macro, PragmaDirective, Struct, TypeDef, Union, Variable,
+    WarningDirective,
 };
 use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]
-pub struct Block {
-    pub stmts: Vec<Statement>,
+pub struct Scope {
+    pub doc: Option<DocComment>,
+    pub global_stmts: Vec<GlobalStatement>,
 }
 
-impl Block {
+impl Scope {
     pub fn new() -> Self {
-        Self { stmts: vec![] }
+        Self {
+            doc: None,
+            global_stmts: vec![],
+        }
     }
 
-    pub fn new_with_statements(stmts: Vec<Statement>) -> Self {
-        Self { stmts }
+    pub fn new_with_global_statements(global_stmts: Vec<GlobalStatement>) -> Self {
+        Self {
+            doc: None,
+            global_stmts,
+        }
     }
 
-    pub fn merge(&mut self, other: &mut Block) -> &mut Self {
-        self.stmts.append(&mut other.stmts);
+    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
+        self.doc = Some(doc);
         self
     }
 
-    pub fn push_statement(&mut self, stmt: Statement) -> &mut Self {
-        self.stmts.push(stmt);
+    pub fn set_global_statements(&mut self, global_stmts: Vec<GlobalStatement>) -> &mut Self {
+        self.global_stmts = global_stmts;
+        self
+    }
+
+    pub fn push_global_statement(&mut self, global_stmt: GlobalStatement) -> &mut Self {
+        self.global_stmts.push(global_stmt);
         self
     }
 
     pub fn push_new_line(&mut self) -> &mut Self {
-        self.stmts.push(Statement::NewLine);
+        self.push_global_statement(GlobalStatement::NewLine);
         self
     }
 }
 
-impl Format for Block {
+impl Format for Scope {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        for stmt in &self.stmts {
+        if let Some(doc) = &self.doc {
+            doc.format(fmt)?;
+        }
+
+        for stmt in &self.global_stmts {
             stmt.format(fmt)?;
         }
 
@@ -70,56 +87,46 @@ impl Format for Block {
 }
 
 #[derive(Debug, Clone, DisplayFromFormat)]
-pub enum Statement {
+pub enum GlobalStatement {
     Comment(Comment),
+    Enum(Enum),
+    Struct(Struct),
+    Function(Function),
+    Union(Union),
     Variable(Variable),
-    Return(Option<Expr>),
-    Break,
-    Continue,
-    GoTo(String),
-    Label(String),
-    If(If),
-    Switch(Switch),
-    While(While),
-    DoWhile(DoWhile),
-    For(For),
+    TypeDef(TypeDef),
     ErrorDirective(ErrorDirective),
+    IfDefDirective(IfDefDirective),
+    IfDirective(IfDirective),
     Include(Include),
+    LineDirective(LineDirective),
     Macro(Macro),
     PragmaDirective(PragmaDirective),
+    WarningDirective(WarningDirective),
     Raw(String),
     NewLine,
 }
 
-impl Format for Statement {
+impl Format for GlobalStatement {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use Statement::*;
+        use GlobalStatement::*;
         match self {
-            Comment(comment) => comment.format(fmt),
-            Variable(variable) => {
-                variable.format(fmt)?;
-                writeln!(fmt, ";")
-            }
-            Return(None) => writeln!(fmt, "return;"),
-            Return(Some(expr)) => {
-                write!(fmt, "return ")?;
-                expr.format(fmt)?;
-                writeln!(fmt)
-            }
-            Break => writeln!(fmt, "break;"),
-            Continue => writeln!(fmt, "continue;"),
-            GoTo(s) => writeln!(fmt, "goto {s};"),
-            Label(s) => writeln!(fmt, "{s}:"),
-            If(i) => i.format(fmt),
-            Switch(s) => s.format(fmt),
-            While(w) => w.format(fmt),
-            DoWhile(w) => w.format(fmt),
-            For(f) => f.format(fmt),
+            Comment(c) => c.format(fmt),
+            Enum(e) => e.format(fmt),
+            Struct(s) => s.format(fmt),
+            Function(f) => f.format(fmt),
+            Union(u) => u.format(fmt),
+            Variable(v) => v.format(fmt),
+            TypeDef(t) => t.format(fmt),
             ErrorDirective(e) => e.format(fmt),
+            IfDefDirective(i) => i.format(fmt),
+            IfDirective(i) => i.format(fmt),
             Include(i) => i.format(fmt),
+            LineDirective(l) => l.format(fmt),
             Macro(m) => m.format(fmt),
             PragmaDirective(p) => p.format(fmt),
-            Raw(s) => writeln!(fmt, "{s}"),
+            WarningDirective(w) => w.format(fmt),
+            Raw(r) => writeln!(fmt, "{r}"),
             NewLine => writeln!(fmt),
         }
     }

@@ -29,6 +29,7 @@ mod formatter;
 mod function;
 mod loops;
 mod preprocessor;
+mod scope;
 mod structs;
 mod typedef;
 mod types;
@@ -43,7 +44,11 @@ pub use expr::{AssignOp, BinOp, Expr, UnaryOp};
 pub use formatter::{Format, Formatter};
 pub use function::{Function, Parameter};
 pub use loops::{DoWhile, For, While};
-pub use preprocessor::{Error, FuncMacro, Include, Macro, ObjMacro, Pragma};
+pub use preprocessor::{
+    ErrorDirective, FuncMacro, IfDefDirective, IfDirective, Include, LineDirective, Macro,
+    ObjMacro, PragmaDirective, ScopeOrBlock, WarningDirective,
+};
+pub use scope::{GlobalStatement, Scope};
 pub use structs::{Field, Struct};
 pub use typedef::TypeDef;
 pub use types::{BaseType, Type, TypeQualifier};
