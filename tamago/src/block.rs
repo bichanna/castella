@@ -23,7 +23,7 @@
 
 use std::fmt::{self, Write};
 
-use crate::{Comment, Expr, Format, Formatter, Variable};
+use crate::{Comment, DoWhile, Expr, For, Format, Formatter, If, Switch, Variable, While};
 use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]
@@ -75,6 +75,11 @@ pub enum Statement {
     Continue,
     GoTo(String),
     Label(String),
+    If(If),
+    Switch(Switch),
+    While(While),
+    DoWhile(DoWhile),
+    For(For),
     Raw(String),
     NewLine,
 }
@@ -98,6 +103,11 @@ impl Format for Statement {
             Continue => writeln!(fmt, "continue;"),
             GoTo(s) => writeln!(fmt, "goto {s};"),
             Label(s) => writeln!(fmt, "{s}:"),
+            If(i) => i.format(fmt),
+            Switch(s) => s.format(fmt),
+            While(w) => w.format(fmt),
+            DoWhile(w) => w.format(fmt),
+            For(f) => f.format(fmt),
             Raw(s) => writeln!(fmt, "{s}"),
             NewLine => writeln!(fmt),
         }

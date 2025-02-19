@@ -59,7 +59,7 @@ impl If {
         self
     }
 
-    pub fn push_to_then(&mut self, stmt: Statement) -> &mut Self {
+    pub fn push_statement_to_then(&mut self, stmt: Statement) -> &mut Self {
         self.then.push_statement(stmt);
         self
     }
