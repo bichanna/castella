@@ -104,7 +104,7 @@ impl Write for Formatter<'_> {
         let mut should_indent = self.is_start_of_line();
 
         for (idx, line) in s.lines().enumerate() {
-            if idx == 0 {
+            if idx != 0 {
                 self.dst.push('\n');
             }
 

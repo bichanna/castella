@@ -58,10 +58,8 @@ impl Comment {
 
     fn push_heading(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         if self.is_heading {
-            write!(fmt, "{}", "/".repeat(100 - fmt.spaces))?;
+            writeln!(fmt, "{}", "/".repeat(80 - fmt.spaces))?;
         }
-
-        writeln!(fmt)?;
 
         Ok(())
     }
@@ -77,7 +75,7 @@ impl Format for Comment {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DisplayFromFormat)]
 pub struct DocComment {
     pub docs: Vec<String>,
 }
@@ -87,7 +85,11 @@ impl DocComment {
         Self { docs: vec![] }
     }
 
-    pub fn push_line(&mut self, line: &str) -> &mut Self {
+    pub fn push_line(&mut self, line: String) -> &mut Self {
+        self.push_line_str(&line)
+    }
+
+    pub fn push_line_str(&mut self, line: &str) -> &mut Self {
         self.docs.push(if line.is_empty() {
             String::new()
         } else {
@@ -96,11 +98,15 @@ impl DocComment {
         self
     }
 
-    pub fn push_text(&mut self, text: &str) -> &mut Self {
+    pub fn push_text(&mut self, text: String) -> &mut Self {
+        self.push_text_str(&text)
+    }
+
+    pub fn push_text_str(&mut self, text: &str) -> &mut Self {
         let mut res = self;
         for line in text.lines() {
             if line.is_empty() || line == "\n" {
-                res = res.push_line("");
+                res = res.push_line_str("");
                 continue;
             }
 
@@ -108,16 +114,16 @@ impl DocComment {
             let mut end = 0;
             for (offset, c) in line.chars().enumerate() {
                 if c == ' ' && (offset - start) > 80 {
-                    res = res.push_line(&line[start..=end]);
+                    res = res.push_line_str(&line[start..=end]);
                     start = end;
                 }
                 end = offset;
             }
 
             if start == end {
-                res = res.push_line("");
+                res = res.push_line_str("");
             } else {
-                res = res.push_line(&line[start..=end]);
+                res = res.push_line_str(&line[start..=end]);
             }
         }
 
@@ -131,5 +137,29 @@ impl Format for DocComment {
             writeln!(fmt, "/// {line}")?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn comment() {
+        let mut c = Comment::new();
+        c.set_comment_with_str("hello");
+        assert_eq!(c.to_string(), "// hello\n");
+        c = Comment::new();
+        c.set_comment_with_str("abc").set_heading();
+        assert_eq!(c.to_string(), "////////////////////////////////////////////////////////////////////////////////\n// abc\n////////////////////////////////////////////////////////////////////////////////\n");
+    }
+
+    #[test]
+    fn doc_comment() {
+        let mut c = DocComment::new();
+        c.push_text_str("Hello\nworld");
+        assert_eq!(c.to_string(), "/// Hello\n/// world\n");
+        c.push_line_str("ABC");
+        assert_eq!(c.to_string(), "/// Hello\n/// world\n/// ABC\n");
     }
 }

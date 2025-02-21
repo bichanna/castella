@@ -198,6 +198,14 @@ impl Type {
         }
     }
 
+    pub fn reset_type(&mut self, base: BaseType) -> &mut Self {
+        self.base = base;
+        self.qualifiers = vec![];
+        self.pointers = 0;
+        self.array = 0;
+        self
+    }
+
     pub fn push_type_qualifier(&mut self, q: TypeQualifier) -> &mut Self {
         self.qualifiers.push(q);
         self
@@ -238,5 +246,60 @@ impl Format for Type {
         write!(fmt, "{}", "*".repeat(self.pointers.into()))?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn base_type() {
+        use BaseType::*;
+        assert_eq!(Void.to_string(), "void");
+        assert_eq!(Double.to_string(), "double");
+        assert_eq!(Float.to_string(), "float");
+        assert_eq!(Char.to_string(), "char");
+        assert_eq!(Int.to_string(), "int");
+        assert_eq!(UInt8.to_string(), "uint8_t");
+        assert_eq!(UInt16.to_string(), "uint16_t");
+        assert_eq!(UInt32.to_string(), "uint32_t");
+        assert_eq!(UInt64.to_string(), "uint64_t");
+        assert_eq!(Int8.to_string(), "int8_t");
+        assert_eq!(Int16.to_string(), "int16_t");
+        assert_eq!(Int32.to_string(), "int32_t");
+        assert_eq!(Int64.to_string(), "int64_t");
+        assert_eq!(Size.to_string(), "size_t");
+        assert_eq!(UIntPtr.to_string(), "uintptr_t");
+        assert_eq!(Bool.to_string(), "bool");
+        assert_eq!(Enum("abc".to_string()).to_string(), "enum abc");
+        assert_eq!(Struct("abc".to_string()).to_string(), "struct abc");
+        assert_eq!(Union("abc".to_string()).to_string(), "union abc");
+        assert_eq!(TypeDef("abc".to_string()).to_string(), "abc");
+    }
+
+    #[test]
+    fn t() {
+        use BaseType::*;
+        let mut t = Type::new(Void);
+        assert_eq!(t.to_string(), "void");
+        t.make_pointer().make_pointer();
+        assert_eq!(t.to_string(), "void**");
+        t.make_const();
+        assert_eq!(t.to_string(), "const void**");
+        t.make_volatile().make_volatile();
+        assert_eq!(t.to_string(), "const volatile volatile void**");
+        t.reset_type(BaseType::new_uint(64))
+            .make_array(10)
+            .make_const();
+        assert_eq!(t.to_string(), "const uint64_t");
+        assert!(t.is_array());
+        t.reset_type(Struct("abc".to_string())).make_pointer();
+        assert_eq!(t.to_string(), "struct abc*");
+        assert!(t.base.is_tag_type());
+        assert_eq!(t.base.is_integer(), false);
+        t.reset_type(TypeDef("abc".to_string()))
+            .push_type_qualifier(TypeQualifier::Const);
+        assert_eq!(t.to_string(), "const abc");
     }
 }

@@ -101,15 +101,12 @@ impl Format for Statement {
         use Statement::*;
         match self {
             Comment(comment) => comment.format(fmt),
-            Variable(variable) => {
-                variable.format(fmt)?;
-                writeln!(fmt, ";")
-            }
+            Variable(variable) => variable.format(fmt),
             Return(None) => writeln!(fmt, "return;"),
             Return(Some(expr)) => {
                 write!(fmt, "return ")?;
                 expr.format(fmt)?;
-                writeln!(fmt)
+                writeln!(fmt, ";")
             }
             Break => writeln!(fmt, "break;"),
             Continue => writeln!(fmt, "continue;"),
@@ -131,5 +128,57 @@ impl Format for Statement {
             Raw(s) => writeln!(fmt, "{s}"),
             NewLine => writeln!(fmt),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{BaseType, Type};
+
+    #[test]
+    fn statement() {
+        let mut c = Comment::new();
+        c.set_comment_with_str("Hello");
+        let mut s = Statement::Comment(c);
+        assert_eq!(s.to_string(), "// Hello\n");
+
+        let mut t = Type::new(BaseType::Size);
+        t.make_const().make_pointer();
+        s = Statement::Variable(Variable::new("abc".to_string(), t));
+        assert_eq!(s.to_string(), "const size_t* abc;\n");
+
+        s = Statement::Return(None);
+        assert_eq!(s.to_string(), "return;\n");
+        s = Statement::Return(Some(Expr::ConstUInt(123)));
+        assert_eq!(s.to_string(), "return 123;\n");
+
+        s = Statement::Break;
+        assert_eq!(s.to_string(), "break;\n");
+
+        s = Statement::Continue;
+        assert_eq!(s.to_string(), "continue;\n");
+
+        s = Statement::GoTo("some_label".to_string());
+        assert_eq!(s.to_string(), "goto some_label;\n");
+
+        s = Statement::Label("some_label".to_string());
+        assert_eq!(s.to_string(), "some_label:\n");
+    }
+
+    #[test]
+    fn blocks() {
+        let mut b1 = Block::new();
+        b1.push_statement(Statement::Raw("abc".to_string()))
+            .push_new_line()
+            .push_new_line();
+
+        assert_eq!(b1.stmts.len(), 3);
+        assert_eq!(b1.to_string(), "abc\n\n\n");
+
+        let mut b2 = Block::new_with_statements(vec![Statement::Raw("something else".to_string())]);
+        b2.merge(&mut b1);
+
+        assert_eq!(b2.to_string(), "something else\nabc\n\n\n");
     }
 }
