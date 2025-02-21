@@ -346,7 +346,7 @@ impl IfDirective {
 
     pub fn push_global_statement(&mut self, global_stmt: GlobalStatement) -> &mut Self {
         match &mut self.then {
-            ScopeOrBlock::Scope(ref mut then) => {
+            ScopeOrBlock::Scope(then) => {
                 then.push_global_statement(global_stmt);
             }
             ScopeOrBlock::Block(_) => {
@@ -361,7 +361,7 @@ impl IfDirective {
 
     pub fn push_block_statement(&mut self, stmt: Statement) -> &mut Self {
         match &mut self.then {
-            ScopeOrBlock::Block(ref mut then) => {
+            ScopeOrBlock::Block(then) => {
                 then.push_statement(stmt);
             }
             ScopeOrBlock::Scope(_) => {
@@ -430,7 +430,7 @@ impl IfDefDirective {
 
     pub fn push_global_statement(&mut self, global_stmt: GlobalStatement) -> &mut Self {
         match &mut self.then {
-            ScopeOrBlock::Scope(ref mut then) => {
+            ScopeOrBlock::Scope(then) => {
                 then.push_global_statement(global_stmt);
             }
             ScopeOrBlock::Block(_) => {
@@ -445,7 +445,7 @@ impl IfDefDirective {
 
     pub fn push_block_statement(&mut self, stmt: Statement) -> &mut Self {
         match &mut self.then {
-            ScopeOrBlock::Block(ref mut then) => {
+            ScopeOrBlock::Block(then) => {
                 then.push_statement(stmt);
             }
             ScopeOrBlock::Scope(_) => {
