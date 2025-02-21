@@ -24,8 +24,9 @@
 use std::fmt::{self, Write};
 
 use crate::{
-    Comment, DoWhile, ErrorDirective, Expr, For, Format, Formatter, If, Include, Macro,
-    PragmaDirective, Switch, Variable, While,
+    Comment, DoWhile, ErrorDirective, Expr, For, Format, Formatter, If, IfDefDirective,
+    IfDirective, Include, LineDirective, Macro, PragmaDirective, Switch, Variable,
+    WarningDirective, While,
 };
 use tamacro::DisplayFromFormat;
 
@@ -84,9 +85,13 @@ pub enum Statement {
     DoWhile(DoWhile),
     For(For),
     ErrorDirective(ErrorDirective),
+    IfDefDirective(IfDefDirective),
+    IfDirective(IfDirective),
     Include(Include),
+    LineDirective(LineDirective),
     Macro(Macro),
     PragmaDirective(PragmaDirective),
+    WarningDirective(WarningDirective),
     Raw(String),
     NewLine,
 }
@@ -116,9 +121,13 @@ impl Format for Statement {
             DoWhile(w) => w.format(fmt),
             For(f) => f.format(fmt),
             ErrorDirective(e) => e.format(fmt),
+            IfDefDirective(i) => i.format(fmt),
+            IfDirective(i) => i.format(fmt),
             Include(i) => i.format(fmt),
+            LineDirective(l) => l.format(fmt),
             Macro(m) => m.format(fmt),
             PragmaDirective(p) => p.format(fmt),
+            WarningDirective(w) => w.format(fmt),
             Raw(s) => writeln!(fmt, "{s}"),
             NewLine => writeln!(fmt),
         }
