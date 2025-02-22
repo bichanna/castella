@@ -4,6 +4,7 @@ version = "0.0.0"
 edition = "2024"
 
 description = "Basically C programming language peppered with my preferences"
+license = "MIT"
 license-file = "LICENSE.txt"
 categories = ["compilers"]
 keywords = ["language", "programming language"]
