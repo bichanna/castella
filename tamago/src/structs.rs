@@ -98,6 +98,11 @@ impl StructBuilder {
         self
     }
 
+    pub fn fields(mut self, fields: Vec<Field>) -> Self {
+        self.fields = fields;
+        self
+    }
+
     pub fn build(self) -> Struct {
         Struct {
             name: self.name,
@@ -107,7 +112,7 @@ impl StructBuilder {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Field {
     /// The name of the field
     pub name: String,
@@ -190,5 +195,51 @@ impl FieldBuilder {
             width: self.width,
             doc: self.doc,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::*;
+
+    #[test]
+    fn field() {
+        let f = FieldBuilder::new_with_str("some_field", Type::new(BaseType::Char).build())
+            .doc(DocComment::new().line_str("Hello").build())
+            .build();
+        let res = r#"/// Hello
+char some_field;
+"#;
+
+        assert_eq!(f.to_string(), res);
+
+        let f2 = FieldBuilder::new_with_str("another_field", Type::new(BaseType::Bool).build())
+            .bitfield_width(1)
+            .build();
+        let res2 = "bool another_field : 1;\n";
+
+        assert_eq!(f2.to_string(), res2);
+    }
+
+    #[test]
+    fn structs() {
+        let s = StructBuilder::new_with_str("Person")
+            .fields(vec![
+                FieldBuilder::new_with_str(
+                    "name",
+                    Type::new(BaseType::Char).make_pointer().build(),
+                )
+                .build(),
+                FieldBuilder::new_with_str("age", Type::new(BaseType::UInt8).build()).build(),
+            ])
+            .build();
+        let res = r#"struct Person {
+  char* name;
+  uint8_t age;
+};
+"#;
+
+        assert_eq!(s.to_string(), res);
     }
 }

@@ -37,7 +37,7 @@ mod union;
 mod variable;
 
 pub use block::{Block, BlockBuilder, Statement};
-pub use comment::{Comment, CommentBuilder, DocComment};
+pub use comment::{Comment, CommentBuilder, DocComment, DocCommentBuilder};
 pub use conditional::{If, IfBuilder, Switch, SwitchBuilder};
 pub use enums::{Enum, EnumBuilder, Variant, VariantBuilder};
 pub use expr::{AssignOp, BinOp, Expr, UnaryOp};

@@ -62,18 +62,21 @@ impl Format for Function {
         }
 
         self.ret.format(fmt)?;
+        write!(fmt, " ")?;
 
         write!(fmt, "{}(", self.name)?;
         if self.params.is_empty() {
             write!(fmt, "void")?;
         } else {
-            for param in &self.params[..self.params.len() - 1] {
-                param.format(fmt)?;
-                write!(fmt, ", ")?;
-            }
+            if self.params.len() > 0 {
+                for param in &self.params[..self.params.len() - 1] {
+                    param.format(fmt)?;
+                    write!(fmt, ", ")?;
+                }
 
-            if let Some(last) = self.params.last() {
-                last.format(fmt)?;
+                if let Some(last) = self.params.last() {
+                    last.format(fmt)?;
+                }
             }
         }
 
@@ -152,6 +155,11 @@ impl FunctionBuilder {
         self
     }
 
+    pub fn param(mut self, param: Parameter) -> Self {
+        self.params.push(param);
+        self
+    }
+
     pub fn build(self) -> Function {
         Function {
             name: self.name,
@@ -219,5 +227,35 @@ impl Format for Parameter {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::*;
+
+    #[test]
+    fn function() {
+        let f = FunctionBuilder::new_with_str("some_function", Type::new(BaseType::Double).build())
+            .make_inline()
+            .param(
+                ParameterBuilder::new_with_str("val", Type::new(BaseType::Double).build()).build(),
+            )
+            .body(
+                Block::new()
+                    .statement(Statement::Return(Some(Expr::Binary {
+                        left: Box::new(Expr::ConstDouble(1.23)),
+                        op: BinOp::Add,
+                        right: Box::new(Expr::Ident("val".to_string())),
+                    })))
+                    .build(),
+            )
+            .build();
+        let res = r#"double some_function(double val) {
+  return (1.23 + val);
+}
+"#;
+        assert_eq!(f.to_string(), res);
     }
 }

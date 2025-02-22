@@ -73,7 +73,7 @@ impl Format for Variable {
             }
         }
 
-        writeln!(fmt, ";")
+        Ok(())
     }
 }
 
@@ -136,5 +136,37 @@ impl VariableBuilder {
             is_extern: self.is_extern,
             doc: self.doc,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::*;
+
+    #[test]
+    fn var() {
+        let var = VariableBuilder::new_with_str(
+            "some_var",
+            TypeBuilder::new(BaseType::Char)
+                .make_pointer()
+                .make_const()
+                .build(),
+        )
+        .value(Expr::ConstStr("Hello, world".to_string()))
+        .build();
+
+        let res = "const char* some_var = \"Hello, world\"";
+
+        assert_eq!(var.to_string(), res);
+
+        let another_var =
+            VariableBuilder::new_with_str("another_var", TypeBuilder::new(BaseType::Bool).build())
+                .make_static()
+                .build();
+
+        let another_res = "static bool another_var";
+
+        assert_eq!(another_var.to_string(), another_res);
     }
 }

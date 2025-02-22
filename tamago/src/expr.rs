@@ -22,7 +22,7 @@
 
 use std::fmt::{self, Write};
 
-use crate::{Format, Formatter, Type};
+use crate::{Format, Formatter, Type, Variable};
 use tamacro::{DisplayFromConstSymbol, DisplayFromFormat, FormatFromConstSymbol};
 
 #[derive(Debug, Clone, DisplayFromFormat)]
@@ -42,6 +42,8 @@ pub enum Expr {
     ConstStr(String),
 
     Ident(String),
+
+    Variable(Box<Variable>),
 
     Binary {
         left: Box<Expr>,
@@ -230,6 +232,7 @@ impl Format for Expr {
             ConstChar(c) => write!(fmt, "'{c}'"),
             ConstStr(s) => write!(fmt, "\"{s}\""),
             Ident(name) => write!(fmt, "{name}"),
+            Variable(var) => var.format(fmt),
             Binary { left, op, right } => {
                 write!(fmt, "(")?;
                 left.format(fmt)?;
@@ -271,12 +274,14 @@ impl Format for Expr {
             FnCall { name, args } => {
                 name.format(fmt)?;
                 write!(fmt, "(")?;
-                for arg in &args[..args.len() - 1] {
-                    arg.format(fmt)?;
-                    write!(fmt, ", ")?;
-                }
-                if let Some(arg) = args.last() {
-                    arg.format(fmt)?;
+                if args.len() > 0 {
+                    for arg in &args[..args.len() - 1] {
+                        arg.format(fmt)?;
+                        write!(fmt, ", ")?;
+                    }
+                    if let Some(arg) = args.last() {
+                        arg.format(fmt)?;
+                    }
                 }
                 write!(fmt, ")")
             }
@@ -305,35 +310,39 @@ impl Format for Expr {
             }
             InitArr(v) => {
                 write!(fmt, "{{")?;
-                for x in &v[..v.len() - 1] {
-                    if let Some(idx) = x.0 {
-                        write!(fmt, "[{idx}]=")?;
+                if v.len() > 0 {
+                    for x in &v[..v.len() - 1] {
+                        if let Some(idx) = x.0 {
+                            write!(fmt, "[{idx}]=")?;
+                        }
+                        x.1.format(fmt)?;
+                        write!(fmt, ", ")?;
                     }
-                    x.1.format(fmt)?;
-                    write!(fmt, ", ")?;
-                }
-                if let Some(last) = v.last() {
-                    if let Some(idx) = last.0 {
-                        write!(fmt, "[{idx}]=")?;
+                    if let Some(last) = v.last() {
+                        if let Some(idx) = last.0 {
+                            write!(fmt, "[{idx}]=")?;
+                        }
+                        last.1.format(fmt)?;
                     }
-                    last.1.format(fmt)?;
                 }
                 write!(fmt, "}}")
             }
             InitStruct(v) => {
                 write!(fmt, "{{")?;
-                for x in &v[..v.len() - 1] {
-                    if let Some(name) = &x.0 {
-                        write!(fmt, ".{name}=")?;
+                if v.len() > 0 {
+                    for x in &v[..v.len() - 1] {
+                        if let Some(name) = &x.0 {
+                            write!(fmt, ".{name}=")?;
+                        }
+                        x.1.format(fmt)?;
+                        write!(fmt, ", ")?;
                     }
-                    x.1.format(fmt)?;
-                    write!(fmt, ", ")?;
-                }
-                if let Some(last) = v.last() {
-                    if let Some(name) = &last.0 {
-                        write!(fmt, ".{name}=")?;
+                    if let Some(last) = v.last() {
+                        if let Some(name) = &last.0 {
+                            write!(fmt, ".{name}=")?;
+                        }
+                        last.1.format(fmt)?;
                     }
-                    last.1.format(fmt)?;
                 }
                 write!(fmt, "}}")
             }
@@ -457,4 +466,152 @@ pub enum AssignOp {
 
     #[symbol = ">>="]
     RShiftAssign,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::*;
+
+    #[test]
+    fn binary() {
+        let b = Expr::new_binary(
+            Expr::new_binary(Expr::ConstInt(123), BinOp::LT, Expr::ConstInt(321)),
+            BinOp::BitOr,
+            Expr::new_binary(Expr::ConstDouble(1.23), BinOp::Sub, Expr::ConstFloat(3.21)),
+        );
+        let res = "((123 < 321) | (1.23 - 3.21f))";
+        assert_eq!(b.to_string(), res);
+    }
+
+    #[test]
+    fn unary() {
+        let u = Expr::new_unary(
+            Expr::new_unary(
+                Expr::new_sizeof(Type::new(BaseType::Struct("some_struct".to_string())).build()),
+                UnaryOp::Inc,
+            ),
+            UnaryOp::Neg,
+        );
+        let res = "(-(sizeof(struct some_struct)++))";
+        assert_eq!(u.to_string(), res);
+    }
+
+    #[test]
+    fn assign() {
+        let a = Expr::new_assign(
+            Expr::Ident("abc".to_string()),
+            AssignOp::SubAssign,
+            Expr::ConstInt(123),
+        );
+        let res = "(abc -= 123)";
+        assert_eq!(a.to_string(), res);
+
+        let b = Expr::new_assign(
+            Expr::Ident("abc".to_string()),
+            AssignOp::BitAndAssign,
+            Expr::ConstBool(false),
+        );
+        let res = "(abc &= false)";
+        assert_eq!(b.to_string(), res);
+    }
+
+    #[test]
+    fn ternary() {
+        let t = Expr::new_ternary(
+            Expr::ConstBool(true),
+            Expr::ConstStr("hello".to_string()),
+            Expr::ConstStr("olleh".to_string()),
+        );
+        let res = r#"(true ? "hello" : "olleh")"#;
+        assert_eq!(t.to_string(), res);
+    }
+
+    #[test]
+    fn fncall() {
+        let f = Expr::new_fn_call(Expr::Ident("some_func".to_string()), vec![]);
+        let res = "some_func()";
+        assert_eq!(f.to_string(), res);
+
+        let f2 = Expr::new_fn_call(
+            Expr::Ident("some_func".to_string()),
+            vec![
+                Expr::ConstChar('a'),
+                Expr::new_sizeof(Type::new(BaseType::Char).build()),
+            ],
+        );
+        let res2 = "some_func('a', sizeof(char))";
+        assert_eq!(f2.to_string(), res2);
+    }
+
+    #[test]
+    fn mem_access() {
+        let m = Expr::new_mem_access(Expr::Ident("person".to_string()), "age".to_string());
+        let res = "person.age";
+        assert_eq!(m.to_string(), res);
+    }
+
+    #[test]
+    fn arr_index() {
+        let a = Expr::new_arr_index(Expr::Ident("some_arr".to_string()), Expr::ConstInt(5));
+        let res = "some_arr[5]";
+        assert_eq!(a.to_string(), res);
+    }
+
+    #[test]
+    fn cast() {
+        let c = Expr::new_cast(
+            Type::new(BaseType::Void).make_pointer().build(),
+            Expr::Ident("something".to_string()),
+        );
+        let res = "(void*)(something)";
+        assert_eq!(c.to_string(), res);
+    }
+
+    #[test]
+    fn sizeof() {
+        let s = Expr::new_sizeof(Type::new(BaseType::Struct("some_struct".to_string())).build());
+        let res = "sizeof(struct some_struct)";
+        assert_eq!(s.to_string(), res);
+    }
+
+    #[test]
+    fn init_arr() {
+        let i = Expr::new_init_arr_in_order(vec![
+            Expr::ConstInt(1),
+            Expr::ConstInt(3),
+            Expr::ConstInt(2),
+        ]);
+        let res = "{1, 3, 2}";
+        assert_eq!(i.to_string(), res);
+
+        let i2 = Expr::new_init_arr_designated(
+            vec![0, 1, 2],
+            vec![
+                Expr::ConstFloat(1.1),
+                Expr::ConstFloat(2.1),
+                Expr::ConstFloat(4.4),
+            ],
+        );
+        let res2 = "{[0]=1.1f, [1]=2.1f, [2]=4.4f}";
+        assert_eq!(i2.to_string(), res2);
+    }
+
+    #[test]
+    fn init_struct() {
+        let i = Expr::new_init_struct_in_order(vec![
+            Expr::ConstStr("abc".to_string()),
+            Expr::ConstInt(15),
+            Expr::ConstChar('x'),
+        ]);
+        let res = "{\"abc\", 15, 'x'}";
+        assert_eq!(i.to_string(), res);
+
+        let i2 = Expr::new_init_struct_designated(
+            vec!["name".to_string(), "age".to_string()],
+            vec![Expr::ConstStr("bichanna".to_string()), Expr::ConstInt(18)],
+        );
+        let res2 = "{.name=\"bichanna\", .age=18}";
+        assert_eq!(i2.to_string(), res2);
+    }
 }

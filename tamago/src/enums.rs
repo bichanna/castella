@@ -180,3 +180,30 @@ impl VariantBuilder {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn enum_stmt() {
+        let e = EnumBuilder::new_with_str("Weekday")
+            .variants(vec![
+                VariantBuilder::new_with_str("MONDAY").build(),
+                VariantBuilder::new_with_str("TUESDAY").build(),
+                VariantBuilder::new_with_str("WEDNESDAY").build(),
+                VariantBuilder::new_with_str("THURSDAY").build(),
+                VariantBuilder::new_with_str("FRIDAY").build(),
+            ])
+            .build();
+        let res = r#"enum Weekday {
+  MONDAY,
+  TUESDAY,
+  WEDNESDAY,
+  THURSDAY,
+  FRIDAY,
+};
+"#;
+        assert_eq!(e.to_string(), res);
+    }
+}

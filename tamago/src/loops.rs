@@ -41,9 +41,10 @@ impl Format for While {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         write!(fmt, "while (")?;
         self.cond.format(fmt)?;
-        write!(fmt, ") ")?;
+        write!(fmt, ")")?;
 
-        fmt.block(|fmt| self.body.format(fmt))
+        fmt.block(|fmt| self.body.format(fmt))?;
+        writeln!(fmt)
     }
 }
 
@@ -70,8 +71,8 @@ impl WhileBuilder {
         self
     }
 
-    pub fn build(self) -> Self {
-        WhileBuilder {
+    pub fn build(self) -> While {
+        While {
             cond: self.cond,
             body: self.body,
         }
@@ -92,7 +93,7 @@ impl DoWhile {
 
 impl Format for DoWhile {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "do ")?;
+        write!(fmt, "do")?;
         fmt.block(|fmt| self.body.format(fmt))?;
 
         write!(fmt, " while (")?;
@@ -124,8 +125,8 @@ impl DoWhileBuilder {
         self
     }
 
-    pub fn build(self) -> DoWhileBuilder {
-        DoWhileBuilder {
+    pub fn build(self) -> DoWhile {
+        DoWhile {
             cond: self.cond,
             body: self.body,
         }
@@ -143,6 +144,31 @@ pub struct For {
 impl For {
     pub fn new() -> ForBuilder {
         ForBuilder::new()
+    }
+}
+
+impl Format for For {
+    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        write!(fmt, "for (")?;
+        if let Some(init) = &self.init {
+            init.format(fmt)?;
+        }
+        write!(fmt, ";")?;
+
+        if let Some(cond) = &self.cond {
+            write!(fmt, " ")?;
+            cond.format(fmt)?;
+        }
+        write!(fmt, ";")?;
+
+        if let Some(step) = &self.step {
+            write!(fmt, " ")?;
+            step.format(fmt)?;
+        }
+        write!(fmt, ")")?;
+
+        fmt.block(|fmt| self.body.format(fmt))?;
+        writeln!(fmt)
     }
 }
 
@@ -188,8 +214,8 @@ impl ForBuilder {
         self
     }
 
-    pub fn build(self) -> ForBuilder {
-        ForBuilder {
+    pub fn build(self) -> For {
+        For {
             init: self.init,
             cond: self.cond,
             step: self.step,
@@ -198,26 +224,57 @@ impl ForBuilder {
     }
 }
 
-impl Format for For {
-    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "for (")?;
-        if let Some(init) = &self.init {
-            init.format(fmt)?;
-        }
-        write!(fmt, ";")?;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::*;
 
-        if let Some(cond) = &self.cond {
-            write!(fmt, " ")?;
-            cond.format(fmt)?;
-        }
-        write!(fmt, ";")?;
+    #[test]
+    fn while_stmt() {
+        let w = WhileBuilder::new(Expr::ConstBool(true))
+            .body(
+                Block::new()
+                    .statement(Statement::Return(Some(Expr::ConstFloat(1.23))))
+                    .build(),
+            )
+            .build();
+        let res = r#"while (true) {
+  return 1.23f;
+}
+"#;
+        assert_eq!(w.to_string(), res);
+    }
 
-        if let Some(step) = &self.step {
-            write!(fmt, " ")?;
-            step.format(fmt)?;
-        }
-        write!(fmt, ") ")?;
+    #[test]
+    fn do_while() {
+        let w = DoWhileBuilder::new(Expr::ConstBool(true)).build();
+        let res = "do {\n} while (true);\n";
+        assert_eq!(w.to_string(), res);
+    }
 
-        fmt.block(|fmt| self.body.format(fmt))
+    #[test]
+    fn for_stmt() {
+        let f = ForBuilder::new()
+            .init(Expr::Variable(Box::new(
+                VariableBuilder::new_with_str("i", Type::new(BaseType::Int).build())
+                    .value(Expr::ConstInt(0))
+                    .build(),
+            )))
+            .cond(Expr::Binary {
+                left: Box::new(Expr::Ident("i".to_string())),
+                op: BinOp::LT,
+                right: Box::new(Expr::ConstInt(10)),
+            })
+            .step(Expr::Unary {
+                op: UnaryOp::Inc,
+                expr: Box::new(Expr::Ident("i".to_string())),
+            })
+            .body(Block::new().statement(Statement::Continue).build())
+            .build();
+        let res = r#"for (int i = 0; (i < 10); (i++)) {
+  continue;
+}
+"#;
+        assert_eq!(f.to_string(), res);
     }
 }

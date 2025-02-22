@@ -88,6 +88,7 @@ impl BlockBuilder {
 pub enum Statement {
     Comment(Comment),
     Variable(Variable),
+    Expr(Expr),
     Return(Option<Expr>),
     Break,
     Continue,
@@ -115,7 +116,14 @@ impl Format for Statement {
         use Statement::*;
         match self {
             Comment(comment) => comment.format(fmt),
-            Variable(variable) => variable.format(fmt),
+            Variable(variable) => {
+                variable.format(fmt)?;
+                writeln!(fmt, ";")
+            }
+            Expr(expr) => {
+                expr.format(fmt)?;
+                writeln!(fmt, ";")
+            }
             Return(None) => writeln!(fmt, "return;"),
             Return(Some(expr)) => {
                 write!(fmt, "return ")?;
@@ -183,19 +191,23 @@ mod tests {
     #[test]
     fn blocks() {
         let b1 = Block::new()
-            .statement(Statement::Raw("abc".to_string()))
+            .statement(Statement::Raw("abc;".to_string()))
             .new_line()
             .new_line()
+            .statement(Statement::Expr(Expr::FnCall {
+                name: Box::new(Expr::new_ident_with_str("some_func")),
+                args: vec![],
+            }))
             .build();
 
-        assert_eq!(b1.stmts.len(), 3);
-        assert_eq!(b1.to_string(), "abc\n\n\n");
+        assert_eq!(b1.stmts.len(), 4);
+        assert_eq!(b1.to_string(), "abc;\n\n\nsome_func();\n");
 
         let b2 = Block::new()
             .statements(vec![Statement::Raw("something else".to_string())])
             .merge(b1)
             .build();
 
-        assert_eq!(b2.to_string(), "something else\nabc\n\n\n");
+        assert_eq!(b2.to_string(), "something else\nabc;\n\n\nsome_func();\n");
     }
 }

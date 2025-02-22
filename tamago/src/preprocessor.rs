@@ -316,11 +316,13 @@ impl Format for FuncMacro {
             write!(fmt, "{last}")?;
         }
 
-        writeln!(fmt, ") \\")?;
+        write!(fmt, ") ")?;
 
         let lines = self.value.lines().collect::<Vec<&str>>();
 
         if lines.len() > 1 {
+            writeln!(fmt, "\\")?;
+
             fmt.indent(|fmt| {
                 for line in &lines[..lines.len() - 1] {
                     writeln!(fmt, "{line} \\")?;
@@ -423,7 +425,11 @@ pub struct IfDirective {
     pub other: Option<ScopeOrBlock>,
 }
 
-impl IfDirective {}
+impl IfDirective {
+    pub fn new(cond: String) -> IfDirectiveBuilder {
+        IfDirectiveBuilder::new(cond)
+    }
+}
 
 impl Format for IfDirective {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
@@ -452,6 +458,10 @@ impl IfDirectiveBuilder {
             then: ScopeOrBlock::Scope(Scope::new().build()),
             other: None,
         }
+    }
+
+    pub fn new_with_str(cond: &str) -> Self {
+        Self::new(cond.to_string())
     }
 
     pub fn global_statement(mut self, global_stmt: GlobalStatement) -> Self {
@@ -706,5 +716,122 @@ impl WarningDirectiveBuilder {
         WarningDirective {
             message: self.message,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn include() {
+        let i = IncludeBuilder::new_with_str("./some_header.h")
+            .doc(
+                DocCommentBuilder::new()
+                    .line_str("importing some_header")
+                    .build(),
+            )
+            .build();
+        let res = r#"/// importing some_header
+#include "./some_header.h"
+"#;
+        assert_eq!(i.to_string(), res);
+
+        let i2 = IncludeBuilder::new_system_with_str("stdio.h").build();
+        let res = "#include <stdio.h>\n";
+        assert_eq!(i2.to_string(), res);
+    }
+
+    #[test]
+    fn error_directive() {
+        let e = ErrorDirectiveBuilder::new_with_str("some kinda compile time error").build();
+        let res = "#error \"some kinda compile time error\"\n";
+        assert_eq!(e.to_string(), res);
+    }
+
+    #[test]
+    fn pragma_directive() {
+        let p = PragmaDirectiveBuilder::new_with_str("once").build();
+        let res = "#pragma once\n";
+        assert_eq!(p.to_string(), res);
+    }
+
+    #[test]
+    fn macros() {
+        let obj_m = Macro::Obj(
+            ObjMacroBuilder::new_with_str("YEAR")
+                .value_with_str("2025")
+                .build(),
+        );
+        let res = "#define YEAR 2025\n";
+        assert_eq!(obj_m.to_string(), res);
+
+        let func_m = Macro::Func(
+            FuncMacroBuilder::new_with_str("AREA")
+                .arg_with_str("width")
+                .arg_with_str("height")
+                .value_with_str("(width) * (height)")
+                .build(),
+        );
+        let res2 = "#define AREA(width, height) (width) * (height)\n";
+        assert_eq!(func_m.to_string(), res2);
+
+        let func_m2 = Macro::Func(
+            FuncMacroBuilder::new_with_str("SOMETHING")
+                .arg_with_str("a")
+                .arg_with_str("b")
+                .arg_with_str("c")
+                .value_with_str("abc\nabc\nanother")
+                .build(),
+        );
+        let res3 = r#"#define SOMETHING(a, b, c) \
+  abc \
+  abc \
+  another
+"#;
+        assert_eq!(func_m2.to_string(), res3);
+    }
+
+    #[test]
+    fn if_directive() {
+        let i = IfDirectiveBuilder::new_with_str("SOMETHING")
+            .block_statement(Statement::Expr(Expr::new_ident_with_str("identifier")))
+            .block_statement(Statement::ErrorDirective(
+                ErrorDirectiveBuilder::new_with_str("some error").build(),
+            ))
+            .build();
+        let res = r#"#if SOMETHING
+identifier;
+#error "some error"
+#endif
+"#;
+        assert_eq!(i.to_string(), res);
+    }
+
+    #[test]
+    fn if_def_directive() {
+        let i = IfDefDirectiveBuilder::new_with_str("SOMETHING")
+            .global_statement(GlobalStatement::NewLine)
+            .not()
+            .build();
+        let res = r#"ifndef SOMETHING
+
+#endif
+"#;
+        assert_eq!(i.to_string(), res);
+    }
+
+    #[test]
+    fn line_directive() {
+        let l = LineDirectiveBuilder::new_with_str(123, "hello.h").build();
+        let res = "#line 123 \"hello.h\"\n";
+        assert_eq!(l.to_string(), res);
+    }
+
+    #[test]
+    fn warning_directive() {
+        let l = WarningDirectiveBuilder::new_with_str("some warning message").build();
+        let res = "#warning \"some warning message\"\n";
+        assert_eq!(l.to_string(), res);
     }
 }

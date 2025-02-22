@@ -70,3 +70,21 @@ impl TypeDefBuilder {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::*;
+
+    #[test]
+    fn typedef() {
+        let t = TypeDefBuilder::new_with_str(
+            TypeBuilder::new(BaseType::Struct("Person".to_string())).build(),
+            "Person",
+        )
+        .build();
+        let res = "typedef struct Person Person;\n";
+
+        assert_eq!(t.to_string(), res);
+    }
+}

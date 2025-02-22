@@ -105,3 +105,32 @@ impl UnionBuilder {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::*;
+
+    #[test]
+    fn union() {
+        let u = UnionBuilder::new_with_str("some_union")
+            .fields(vec![
+                FieldBuilder::new_with_str(
+                    "a",
+                    TypeBuilder::new(BaseType::Char).make_array(20).build(),
+                )
+                .build(),
+                FieldBuilder::new_with_str("b", TypeBuilder::new(BaseType::Int).build()).build(),
+                FieldBuilder::new_with_str("c", TypeBuilder::new(BaseType::Bool).build()).build(),
+            ])
+            .build();
+        let res = r#"union some_union {
+  char a[20];
+  int b;
+  bool c;
+};
+"#;
+
+        assert_eq!(u.to_string(), res);
+    }
+}

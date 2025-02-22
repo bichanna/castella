@@ -137,3 +137,57 @@ impl Format for GlobalStatement {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scope() {
+        let s = ScopeBuilder::new()
+            .global_statement(GlobalStatement::WarningDirective(
+                WarningDirectiveBuilder::new_with_str("some warning").build(),
+            ))
+            .new_line()
+            .global_statement(GlobalStatement::Include(
+                IncludeBuilder::new_system_with_str("stdio.h").build(),
+            ))
+            .build();
+        let res = r#"#warning "some warning"
+
+#include <stdio.h>
+"#;
+
+        assert_eq!(s.to_string(), res);
+
+        let s = ScopeBuilder::new()
+            .global_statements(vec![
+                GlobalStatement::Comment(CommentBuilder::new().comment_with_str("Hello").build()),
+                GlobalStatement::NewLine,
+                GlobalStatement::Function(
+                    FunctionBuilder::new_with_str("some_func", Type::new(BaseType::Bool).build())
+                        .body(
+                            BlockBuilder::new()
+                                .statement(Statement::Return(None))
+                                .build(),
+                        )
+                        .doc(
+                            DocCommentBuilder::new()
+                                .line_str("this is a function")
+                                .build(),
+                        )
+                        .build(),
+                ),
+            ])
+            .build();
+        let res = r#"// Hello
+
+/// this is a function
+bool some_func(void) {
+  return;
+}
+"#;
+
+        assert_eq!(s.to_string(), res);
+    }
+}
