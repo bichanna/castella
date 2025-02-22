@@ -12,7 +12,7 @@ repository = "https://github.com/bichanna/castella"
 readme = "README.md"
 
 [dependencies]
-tamago = { path = "tamago" }
+tamago = { path = "tamago", version = "0.1.1" }
 
 [workspace]
 members = [
