@@ -42,6 +42,20 @@ impl Comment {
         }
     }
 
+    pub fn new_with_str(comment: &str) -> Self {
+        Self {
+            comment: comment.to_string(),
+            is_heading: false,
+        }
+    }
+
+    pub fn new_with_comment(comment: String) -> Self {
+        Self {
+            comment,
+            is_heading: false,
+        }
+    }
+
     pub fn set_comment(&mut self, comment: String) -> &mut Self {
         self.comment = comment;
         self

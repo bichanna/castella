@@ -41,9 +41,25 @@ impl Include {
         }
     }
 
+    pub fn new_with_str(path: &str) -> Self {
+        Self {
+            path: path.to_string(),
+            is_system: false,
+            doc: None,
+        }
+    }
+
     pub fn new_system(path: String) -> Self {
         Self {
             path,
+            is_system: true,
+            doc: None,
+        }
+    }
+
+    pub fn new_system_with_str(path: &str) -> Self {
+        Self {
+            path: path.to_string(),
             is_system: true,
             doc: None,
         }
@@ -82,11 +98,17 @@ impl ErrorDirective {
     pub fn new(message: String) -> Self {
         Self { message }
     }
+
+    pub fn new_with_str(message: &str) -> Self {
+        Self {
+            message: message.to_string(),
+        }
+    }
 }
 
 impl Format for ErrorDirective {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(fmt, "#error {}", self.message)
+        writeln!(fmt, "#error \"{}\"", self.message)
     }
 }
 
@@ -98,6 +120,12 @@ pub struct PragmaDirective {
 impl PragmaDirective {
     pub fn new(raw: String) -> Self {
         Self { raw }
+    }
+
+    pub fn new_with_str(raw: &str) -> Self {
+        Self {
+            raw: raw.to_string(),
+        }
     }
 }
 
@@ -550,10 +578,16 @@ impl WarningDirective {
     pub fn new(message: String) -> Self {
         Self { message }
     }
+
+    pub fn new_with_str(message: &str) -> Self {
+        Self {
+            message: message.to_string(),
+        }
+    }
 }
 
 impl Format for WarningDirective {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(fmt, "#warning {}", self.message)
+        writeln!(fmt, "#warning \"{}\"", self.message)
     }
 }

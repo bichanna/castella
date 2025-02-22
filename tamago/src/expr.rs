@@ -100,6 +100,10 @@ impl Expr {
         Self::Ident(name)
     }
 
+    pub fn new_ident_with_str(name: &str) -> Self {
+        Self::new_ident(name.to_string())
+    }
+
     pub fn new_null() -> Self {
         Self::new_ident("NULL".to_string())
     }
@@ -229,7 +233,9 @@ impl Format for Expr {
             Binary { left, op, right } => {
                 write!(fmt, "(")?;
                 left.format(fmt)?;
+                write!(fmt, " ")?;
                 op.format(fmt)?;
+                write!(fmt, " ")?;
                 right.format(fmt)?;
                 write!(fmt, ")")
             }
@@ -247,7 +253,9 @@ impl Format for Expr {
             Assign { lvalue, op, value } => {
                 write!(fmt, "(")?;
                 lvalue.format(fmt)?;
+                write!(fmt, " ")?;
                 op.format(fmt)?;
+                write!(fmt, " ")?;
                 value.format(fmt)?;
                 write!(fmt, ")")
             }
@@ -288,7 +296,7 @@ impl Format for Expr {
                 write!(fmt, ")")?;
                 write!(fmt, "(")?;
                 expr.format(fmt)?;
-                write!(fmt, "(")
+                write!(fmt, ")")
             }
             SizeOf(t) => {
                 write!(fmt, "sizeof(")?;

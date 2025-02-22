@@ -74,7 +74,7 @@ impl Format for If {
         fmt.block(|fmt| self.then.format(fmt))?;
 
         if let Some(other) = &self.other {
-            write!(fmt, " else ")?;
+            write!(fmt, " else")?;
             fmt.block(|fmt| other.format(fmt))?;
         }
 
@@ -124,23 +124,111 @@ impl Switch {
 
 impl Format for Switch {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "swtich (")?;
+        write!(fmt, "switch (")?;
         self.cond.format(fmt)?;
-        write!(fmt, ") {{")?;
+        writeln!(fmt, ") {{")?;
 
         for (label, block) in &self.cases {
             write!(fmt, "case ")?;
             label.format(fmt)?;
-            writeln!(fmt, ":")?;
+            write!(fmt, ":")?;
 
             fmt.block(|fmt| block.format(fmt))?;
+            writeln!(fmt)?;
         }
 
         if let Some(def) = &self.default {
-            writeln!(fmt, "default:")?;
+            write!(fmt, "default:")?;
             fmt.block(|fmt| def.format(fmt))?;
+            writeln!(fmt)?;
         }
 
         writeln!(fmt, "}}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        BaseType, BinOp, Comment, ErrorDirective, Macro, ObjMacro, Type, WarningDirective,
+    };
+
+    #[test]
+    fn if_condition() {
+        let mut i = If::new(Expr::ConstBool(true));
+        i.set_then(Block::new_with_statements(vec![
+            Statement::Comment(Comment::new_with_str("Some comment")),
+            Statement::ErrorDirective(ErrorDirective::new_with_str("some error")),
+            Statement::Return(None),
+        ]));
+        let mut res = r#"if (true) {
+  // Some comment
+  #error "some error"
+  return;
+}
+"#;
+        assert_eq!(i.to_string(), res);
+
+        let mut another_if = If::new(Expr::new_binary(
+            Expr::new_ident_with_str("another_var"),
+            BinOp::Eq,
+            Expr::new_ident_with_str("some_var"),
+        ));
+        another_if.set_then(Block::new_with_statements(vec![
+            Statement::GoTo("hello".to_string()),
+            Statement::WarningDirective(WarningDirective::new_with_str("some warning")),
+        ]));
+        i.set_other(Block::new_with_statements(vec![Statement::If(another_if)]));
+        res = r#"if (true) {
+  // Some comment
+  #error "some error"
+  return;
+} else {
+  if ((another_var == some_var)) {
+    goto hello;
+    #warning "some warning"
+  }
+}
+"#;
+
+        assert_eq!(i.to_string(), res);
+    }
+
+    #[test]
+    fn switch_condition() {
+        let mut s = Switch::new(Expr::ConstBool(true));
+        s.push_case((
+            Expr::new_null(),
+            Block::new_with_statements(vec![
+                Statement::Comment(Comment::new_with_str("Hello, world")),
+                Statement::Comment(Comment::new_with_str("Another comment")),
+            ]),
+        ))
+        .push_case((
+            Expr::new_cast(Type::new(BaseType::UInt8), Expr::ConstInt(123)),
+            Block::new_with_statements(vec![Statement::Macro(Macro::Obj(
+                ObjMacro::new_with_value("AGE".to_string(), "18".to_string()),
+            ))]),
+        ))
+        .set_default(Block::new_with_statements(vec![Statement::Raw(
+            "abc;".to_string(),
+        )]));
+
+        let res = r#"switch (true) {
+case NULL: {
+  // Hello, world
+  // Another comment
+}
+case (uint8_t)(123): {
+  #define AGE 18
+}
+default: {
+  abc;
+}
+}
+"#;
+
+        assert_eq!(s.to_string(), res);
     }
 }
