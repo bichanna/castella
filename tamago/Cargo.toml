@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 description = "Library for generating C code"
+license = "MIT"
 license-file = "LICENSE.txt"
 authors = ["Nobuharu Shimazu <nobu.bichanna@gmail.com>"]
 homepage = "https://github.com/bichanna/castella/tree/main/tamago"
