@@ -6,7 +6,10 @@ edition = "2024"
 description = "Library for generating C code"
 license-file = "LICENSE.txt"
 authors = ["Nobuharu Shimazu <nobu.bichanna@gmail.com>"]
+homepage = "https://github.com/bichanna/castella/tree/main/tamago"
+repository = "https://github.com/bichanna/castella/tree/main/tamago"
 readme = "README.md"
+keywords = ["code", "generator", "code_generator"]
 
 [dependencies]
-tamacro = { path = "tamacro" }
+tamacro = { path = "tamacro", version = "0.1.0" }
