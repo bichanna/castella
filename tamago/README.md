@@ -18,7 +18,6 @@ Add `tamago` to your project by including it in your `Cargo.toml`:
 [dependencies]
 tamago = "0.1.0"  # Replace with the actual version
 ```
-```
 
 ## Usage
 ```rust
@@ -71,7 +70,7 @@ let scope = ScopeBuilder::new()
 println!("{}", scope.to_string());
 ```
 And here's output:
-```rust
+```c
 /// Represents a person
 struct Person {
   /// The name of the person
