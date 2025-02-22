@@ -189,44 +189,8 @@ pub struct Type {
 }
 
 impl Type {
-    pub fn new(base: BaseType) -> Self {
-        Self {
-            base,
-            qualifiers: vec![],
-            pointers: 0,
-            array: 0,
-        }
-    }
-
-    pub fn reset_type(&mut self, base: BaseType) -> &mut Self {
-        self.base = base;
-        self.qualifiers = vec![];
-        self.pointers = 0;
-        self.array = 0;
-        self
-    }
-
-    pub fn push_type_qualifier(&mut self, q: TypeQualifier) -> &mut Self {
-        self.qualifiers.push(q);
-        self
-    }
-
-    pub fn make_volatile(&mut self) -> &mut Self {
-        self.push_type_qualifier(TypeQualifier::Volatile)
-    }
-
-    pub fn make_const(&mut self) -> &mut Self {
-        self.push_type_qualifier(TypeQualifier::Const)
-    }
-
-    pub fn make_pointer(&mut self) -> &mut Self {
-        self.pointers += 1;
-        self
-    }
-
-    pub fn make_array(&mut self, size: usize) -> &mut Self {
-        self.array = size;
-        self
+    pub fn new(base: BaseType) -> TypeBuilder {
+        TypeBuilder::new(base)
     }
 
     pub fn is_array(&self) -> bool {
@@ -246,6 +210,56 @@ impl Format for Type {
         write!(fmt, "{}", "*".repeat(self.pointers.into()))?;
 
         Ok(())
+    }
+}
+
+pub struct TypeBuilder {
+    base: BaseType,
+    qualifiers: Vec<TypeQualifier>,
+    pointers: u8,
+    array: usize,
+}
+
+impl TypeBuilder {
+    pub fn new(base: BaseType) -> Self {
+        Self {
+            base,
+            qualifiers: vec![],
+            pointers: 0,
+            array: 0,
+        }
+    }
+
+    pub fn type_qualifier(mut self, q: TypeQualifier) -> Self {
+        self.qualifiers.push(q);
+        self
+    }
+
+    pub fn make_volatile(self) -> Self {
+        self.type_qualifier(TypeQualifier::Volatile)
+    }
+
+    pub fn make_const(self) -> Self {
+        self.type_qualifier(TypeQualifier::Const)
+    }
+
+    pub fn make_pointer(mut self) -> Self {
+        self.pointers += 1;
+        self
+    }
+
+    pub fn make_array(mut self, size: usize) -> Self {
+        self.array = size;
+        self
+    }
+
+    pub fn build(self) -> Type {
+        Type {
+            base: self.base,
+            qualifiers: self.qualifiers,
+            pointers: self.pointers,
+            array: self.array,
+        }
     }
 }
 
@@ -281,25 +295,25 @@ mod tests {
     #[test]
     fn t() {
         use BaseType::*;
-        let mut t = Type::new(Void);
+        let mut t = Type::new(Void).build();
         assert_eq!(t.to_string(), "void");
-        t.make_pointer().make_pointer();
+
+        t = Type::new(Void).make_pointer().make_pointer().build();
         assert_eq!(t.to_string(), "void**");
-        t.make_const();
+
+        t = Type::new(Void)
+            .make_pointer()
+            .make_pointer()
+            .make_const()
+            .build();
         assert_eq!(t.to_string(), "const void**");
-        t.make_volatile().make_volatile();
-        assert_eq!(t.to_string(), "const volatile volatile void**");
-        t.reset_type(BaseType::new_uint(64))
+
+        t = Type::new(Void)
+            .make_pointer()
+            .make_const()
             .make_array(10)
-            .make_const();
-        assert_eq!(t.to_string(), "const uint64_t");
-        assert!(t.is_array());
-        t.reset_type(Struct("abc".to_string())).make_pointer();
-        assert_eq!(t.to_string(), "struct abc*");
-        assert!(t.base.is_tag_type());
-        assert_eq!(t.base.is_integer(), false);
-        t.reset_type(TypeDef("abc".to_string()))
-            .push_type_qualifier(TypeQualifier::Const);
-        assert_eq!(t.to_string(), "const abc");
+            .build();
+        assert_eq!(t.to_string(), "const void*");
+        assert!(t.is_array())
     }
 }

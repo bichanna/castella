@@ -33,35 +33,8 @@ pub struct If {
 }
 
 impl If {
-    pub fn new(cond: Expr) -> Self {
-        Self {
-            cond,
-            then: Block::new(),
-            other: None,
-        }
-    }
-
-    pub fn new_with_then(cond: Expr, then: Block) -> Self {
-        Self {
-            cond,
-            then,
-            other: None,
-        }
-    }
-
-    pub fn set_then(&mut self, then: Block) -> &mut Self {
-        self.then = then;
-        self
-    }
-
-    pub fn set_other(&mut self, other: Block) -> &mut Self {
-        self.other = Some(other);
-        self
-    }
-
-    pub fn push_statement_to_then(&mut self, stmt: Statement) -> &mut Self {
-        self.then.push_statement(stmt);
-        self
+    pub fn new(cond: Expr) -> IfBuilder {
+        IfBuilder::new(cond)
     }
 }
 
@@ -82,6 +55,53 @@ impl Format for If {
     }
 }
 
+pub struct IfBuilder {
+    cond: Expr,
+    then: Block,
+    other: Option<Block>,
+}
+
+impl IfBuilder {
+    pub fn new(cond: Expr) -> Self {
+        Self {
+            cond,
+            then: Block::new().build(),
+            other: None,
+        }
+    }
+
+    pub fn new_with_then(cond: Expr, then: Block) -> Self {
+        Self {
+            cond,
+            then,
+            other: None,
+        }
+    }
+
+    pub fn then(mut self, then: Block) -> Self {
+        self.then = then;
+        self
+    }
+
+    pub fn other(mut self, other: Block) -> Self {
+        self.other = Some(other);
+        self
+    }
+
+    pub fn statement_to_then(mut self, stmt: Statement) -> Self {
+        self.then.stmts.push(stmt);
+        self
+    }
+
+    pub fn build(self) -> If {
+        If {
+            cond: self.cond,
+            then: self.then,
+            other: self.other,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Switch {
     pub cond: Expr,
@@ -90,35 +110,8 @@ pub struct Switch {
 }
 
 impl Switch {
-    pub fn new(cond: Expr) -> Self {
-        Self {
-            cond,
-            cases: vec![],
-            default: None,
-        }
-    }
-
-    pub fn new_with_cases(cond: Expr, cases: Vec<(Expr, Block)>) -> Self {
-        Self {
-            cond,
-            cases,
-            default: None,
-        }
-    }
-
-    pub fn set_cases(&mut self, cases: Vec<(Expr, Block)>) -> &mut Self {
-        self.cases = cases;
-        self
-    }
-
-    pub fn set_default(&mut self, default: Block) -> &mut Self {
-        self.default = Some(default);
-        self
-    }
-
-    pub fn push_case(&mut self, case: (Expr, Block)) -> &mut Self {
-        self.cases.push(case);
-        self
+    pub fn new(cond: Expr) -> SwitchBuilder {
+        SwitchBuilder::new(cond)
     }
 }
 
@@ -147,40 +140,93 @@ impl Format for Switch {
     }
 }
 
+pub struct SwitchBuilder {
+    cond: Expr,
+    cases: Vec<(Expr, Block)>,
+    default: Option<Block>,
+}
+
+impl SwitchBuilder {
+    pub fn new(cond: Expr) -> Self {
+        Self {
+            cond,
+            cases: vec![],
+            default: None,
+        }
+    }
+
+    pub fn new_with_cases(cond: Expr, cases: Vec<(Expr, Block)>) -> Self {
+        Self {
+            cond,
+            cases,
+            default: None,
+        }
+    }
+
+    pub fn case(mut self, c: Expr, b: Block) -> Self {
+        self.cases.push((c, b));
+        self
+    }
+
+    pub fn cases(mut self, cases: Vec<(Expr, Block)>) -> Self {
+        self.cases = cases;
+        self
+    }
+
+    pub fn default(mut self, default: Block) -> Self {
+        self.default = Some(default);
+        self
+    }
+
+    pub fn build(self) -> Switch {
+        Switch {
+            cond: self.cond,
+            cases: self.cases,
+            default: self.default,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        BaseType, BinOp, Comment, ErrorDirective, Macro, ObjMacro, Type, WarningDirective,
-    };
+    use crate::*;
 
     #[test]
     fn if_condition() {
-        let mut i = If::new(Expr::ConstBool(true));
-        i.set_then(Block::new_with_statements(vec![
-            Statement::Comment(Comment::new_with_str("Some comment")),
-            Statement::ErrorDirective(ErrorDirective::new_with_str("some error")),
-            Statement::Return(None),
-        ]));
-        let mut res = r#"if (true) {
-  // Some comment
-  #error "some error"
-  return;
-}
-"#;
-        assert_eq!(i.to_string(), res);
-
-        let mut another_if = If::new(Expr::new_binary(
+        let another_if = IfBuilder::new(Expr::new_binary(
             Expr::new_ident_with_str("another_var"),
             BinOp::Eq,
             Expr::new_ident_with_str("some_var"),
-        ));
-        another_if.set_then(Block::new_with_statements(vec![
-            Statement::GoTo("hello".to_string()),
-            Statement::WarningDirective(WarningDirective::new_with_str("some warning")),
-        ]));
-        i.set_other(Block::new_with_statements(vec![Statement::If(another_if)]));
-        res = r#"if (true) {
+        ))
+        .then(
+            BlockBuilder::new()
+                .statements(vec![
+                    Statement::GoTo("hello".to_string()),
+                    Statement::WarningDirective(
+                        WarningDirectiveBuilder::new_with_str("some warning").build(),
+                    ),
+                ])
+                .build(),
+        )
+        .build();
+
+        let i = IfBuilder::new(Expr::ConstBool(true))
+            .then(
+                BlockBuilder::new()
+                    .statements(vec![
+                        Statement::Comment(CommentBuilder::new_with_str("Some comment").build()),
+                        Statement::ErrorDirective(
+                            ErrorDirectiveBuilder::new_with_str("some error").build(),
+                        ),
+                        Statement::Return(None),
+                    ])
+                    .build(),
+            )
+            .other(Block::new().statement(Statement::If(another_if)).build())
+            .build();
+
+        let res = r#"if (true) {
   // Some comment
   #error "some error"
   return;
@@ -197,23 +243,32 @@ mod tests {
 
     #[test]
     fn switch_condition() {
-        let mut s = Switch::new(Expr::ConstBool(true));
-        s.push_case((
-            Expr::new_null(),
-            Block::new_with_statements(vec![
-                Statement::Comment(Comment::new_with_str("Hello, world")),
-                Statement::Comment(Comment::new_with_str("Another comment")),
-            ]),
-        ))
-        .push_case((
-            Expr::new_cast(Type::new(BaseType::UInt8), Expr::ConstInt(123)),
-            Block::new_with_statements(vec![Statement::Macro(Macro::Obj(
-                ObjMacro::new_with_value("AGE".to_string(), "18".to_string()),
-            ))]),
-        ))
-        .set_default(Block::new_with_statements(vec![Statement::Raw(
-            "abc;".to_string(),
-        )]));
+        let s = SwitchBuilder::new(Expr::ConstBool(true))
+            .case(
+                Expr::new_null(),
+                Block::new()
+                    .statements(vec![
+                        Statement::Comment(CommentBuilder::new_with_str("Hello, world").build()),
+                        Statement::Comment(CommentBuilder::new_with_str("Another comment").build()),
+                    ])
+                    .build(),
+            )
+            .case(
+                Expr::new_cast(Type::new(BaseType::UInt8).build(), Expr::ConstInt(123)),
+                Block::new()
+                    .statement(Statement::Macro(Macro::Obj(
+                        ObjMacroBuilder::new_with_str("AGE")
+                            .value_with_str("18")
+                            .build(),
+                    )))
+                    .build(),
+            )
+            .default(
+                Block::new()
+                    .statement(Statement::Raw("abc;".to_string()))
+                    .build(),
+            )
+            .build();
 
         let res = r#"switch (true) {
 case NULL: {

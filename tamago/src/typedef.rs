@@ -32,12 +32,12 @@ pub struct TypeDef {
 }
 
 impl TypeDef {
-    pub fn new(t: Type, name: String) -> Self {
-        Self { t, name }
+    pub fn new(t: Type, name: String) -> TypeDefBuilder {
+        TypeDefBuilder::new(t, name)
     }
 
     pub fn to_type(&self) -> Type {
-        Type::new(BaseType::TypeDef(self.name.clone()))
+        Type::new(BaseType::TypeDef(self.name.clone())).build()
     }
 }
 
@@ -46,5 +46,27 @@ impl Format for TypeDef {
         write!(fmt, "typedef ")?;
         self.t.format(fmt)?;
         writeln!(fmt, " {};", self.name)
+    }
+}
+
+pub struct TypeDefBuilder {
+    t: Type,
+    name: String,
+}
+
+impl TypeDefBuilder {
+    pub fn new(t: Type, name: String) -> Self {
+        Self { t, name }
+    }
+
+    pub fn new_with_str(t: Type, name: &str) -> Self {
+        Self::new(t, name.to_string())
+    }
+
+    pub fn build(self) -> TypeDef {
+        TypeDef {
+            t: self.t,
+            name: self.name,
+        }
     }
 }

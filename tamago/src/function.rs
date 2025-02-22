@@ -38,52 +38,8 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn new(name: String, ret: Type) -> Self {
-        Self {
-            name,
-            ret,
-            params: vec![],
-            is_inline: false,
-            is_static: false,
-            is_extern: false,
-            body: Block::new(),
-            doc: None,
-        }
-    }
-
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
-        self.doc = Some(doc);
-        self
-    }
-
-    pub fn set_inline(&mut self) -> &mut Self {
-        self.is_inline = true;
-        self
-    }
-
-    pub fn set_static(&mut self) -> &mut Self {
-        self.is_static = true;
-        self
-    }
-
-    pub fn set_extern(&mut self) -> &mut Self {
-        self.is_extern = true;
-        self
-    }
-
-    pub fn set_body(&mut self, body: Block) -> &mut Self {
-        self.body = body;
-        self
-    }
-
-    pub fn push_statement(&mut self, stmt: Statement) -> &mut Self {
-        self.body.push_statement(stmt);
-        self
-    }
-
-    pub fn push_new_line(&mut self) -> &mut Self {
-        self.body.push_new_line();
-        self
+    pub fn new(name: String, ret: Type) -> FunctionBuilder {
+        FunctionBuilder::new(name, ret)
     }
 }
 
@@ -132,6 +88,84 @@ impl Format for Function {
     }
 }
 
+pub struct FunctionBuilder {
+    name: String,
+    params: Vec<Parameter>,
+    ret: Type,
+    is_inline: bool,
+    is_static: bool,
+    is_extern: bool,
+    body: Block,
+    doc: Option<DocComment>,
+}
+
+impl FunctionBuilder {
+    pub fn new(name: String, ret: Type) -> Self {
+        Self {
+            name,
+            ret,
+            params: vec![],
+            is_inline: false,
+            is_static: false,
+            is_extern: false,
+            body: Block::new().build(),
+            doc: None,
+        }
+    }
+
+    pub fn new_with_str(name: &str, ret: Type) -> Self {
+        Self::new(name.to_string(), ret)
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn make_inline(mut self) -> Self {
+        self.is_inline = true;
+        self
+    }
+
+    pub fn make_static(mut self) -> Self {
+        self.is_static = true;
+        self
+    }
+
+    pub fn make_extern(mut self) -> Self {
+        self.is_extern = true;
+        self
+    }
+
+    pub fn body(mut self, body: Block) -> Self {
+        self.body = body;
+        self
+    }
+
+    pub fn statement(mut self, stmt: Statement) -> Self {
+        self.body.stmts.push(stmt);
+        self
+    }
+
+    pub fn new_line(mut self) -> Self {
+        self.body.stmts.push(Statement::NewLine);
+        self
+    }
+
+    pub fn build(self) -> Function {
+        Function {
+            name: self.name,
+            ret: self.ret,
+            params: self.params,
+            is_inline: self.is_extern,
+            is_static: self.is_static,
+            is_extern: self.is_extern,
+            body: self.body,
+            doc: self.doc,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Parameter {
     pub name: String,
@@ -140,13 +174,37 @@ pub struct Parameter {
 }
 
 impl Parameter {
+    pub fn new(name: String, t: Type) -> ParameterBuilder {
+        ParameterBuilder::new(name, t)
+    }
+}
+
+pub struct ParameterBuilder {
+    name: String,
+    t: Type,
+    doc: Option<DocComment>,
+}
+
+impl ParameterBuilder {
     pub fn new(name: String, t: Type) -> Self {
         Self { name, t, doc: None }
     }
 
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
+    pub fn new_with_str(name: &str, t: Type) -> Self {
+        Self::new(name.to_string(), t)
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
+    }
+
+    pub fn build(self) -> Parameter {
+        Parameter {
+            name: self.name,
+            t: self.t,
+            doc: self.doc,
+        }
     }
 }
 

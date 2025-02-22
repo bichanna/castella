@@ -39,34 +39,12 @@ pub struct Struct {
 }
 
 impl Struct {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            fields: vec![],
-            doc: None,
-        }
-    }
-
-    pub fn new_with_fields(name: String, fields: Vec<Field>) -> Self {
-        Self {
-            name,
-            fields,
-            doc: None,
-        }
-    }
-
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
-        self.doc = Some(doc);
-        self
-    }
-
-    pub fn push_field(&mut self, field: Field) -> &mut Self {
-        self.fields.push(field);
-        self
+    pub fn new(name: String) -> StructBuilder {
+        StructBuilder::new(name)
     }
 
     pub fn to_type(&self) -> Type {
-        Type::new(BaseType::Struct(self.name.clone()))
+        Type::new(BaseType::Struct(self.name.clone())).build()
     }
 }
 
@@ -91,6 +69,44 @@ impl Format for Struct {
     }
 }
 
+pub struct StructBuilder {
+    name: String,
+    fields: Vec<Field>,
+    doc: Option<DocComment>,
+}
+
+impl StructBuilder {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            fields: vec![],
+            doc: None,
+        }
+    }
+
+    pub fn new_with_str(name: &str) -> Self {
+        Self::new(name.to_string())
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn field(mut self, field: Field) -> Self {
+        self.fields.push(field);
+        self
+    }
+
+    pub fn build(self) -> Struct {
+        Struct {
+            name: self.name,
+            fields: self.fields,
+            doc: self.doc,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Field {
     /// The name of the field
@@ -107,27 +123,8 @@ pub struct Field {
 }
 
 impl Field {
-    pub fn new(name: String, t: Type) -> Self {
-        Self {
-            name,
-            t,
-            width: None,
-            doc: None,
-        }
-    }
-
-    pub fn new_with_width(name: String, t: Type, width: u8) -> Self {
-        Self {
-            name,
-            t,
-            width: Some(width),
-            doc: None,
-        }
-    }
-
-    pub fn set_bitfield_width(&mut self, width: u8) -> &mut Self {
-        self.width = Some(width);
-        self
+    pub fn new(name: String, t: Type) -> FieldBuilder {
+        FieldBuilder::new(name, t)
     }
 
     pub fn to_type(&self) -> Type {
@@ -152,5 +149,46 @@ impl Format for Field {
             write!(fmt, "[{}]", self.t.array)?;
         }
         writeln!(fmt, ";")
+    }
+}
+
+pub struct FieldBuilder {
+    name: String,
+    t: Type,
+    width: Option<u8>,
+    doc: Option<DocComment>,
+}
+
+impl FieldBuilder {
+    pub fn new(name: String, t: Type) -> Self {
+        Self {
+            name,
+            t,
+            width: None,
+            doc: None,
+        }
+    }
+
+    pub fn new_with_str(name: &str, t: Type) -> Self {
+        Self::new(name.to_string(), t)
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn bitfield_width(mut self, width: u8) -> Self {
+        self.width = Some(width);
+        self
+    }
+
+    pub fn build(self) -> Field {
+        Field {
+            name: self.name,
+            t: self.t,
+            width: self.width,
+            doc: self.doc,
+        }
     }
 }

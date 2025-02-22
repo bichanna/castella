@@ -22,7 +22,7 @@
 
 use std::fmt::{self, Write};
 
-use crate::{Block, DocComment, Format, Formatter, GlobalStatement, Scope, Statement};
+use crate::*;
 use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]
@@ -33,6 +33,36 @@ pub struct Include {
 }
 
 impl Include {
+    pub fn new(path: String) -> IncludeBuilder {
+        IncludeBuilder::new(path)
+    }
+}
+
+impl Format for Include {
+    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        if let Some(doc) = &self.doc {
+            doc.format(fmt)?;
+        }
+
+        write!(fmt, "#include ")?;
+
+        if self.is_system {
+            writeln!(fmt, "<{}>", self.path)?;
+        } else {
+            writeln!(fmt, "\"{}\"", self.path)?;
+        }
+
+        Ok(())
+    }
+}
+
+pub struct IncludeBuilder {
+    path: String,
+    is_system: bool,
+    doc: Option<DocComment>,
+}
+
+impl IncludeBuilder {
     pub fn new(path: String) -> Self {
         Self {
             path,
@@ -65,27 +95,17 @@ impl Include {
         }
     }
 
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
+    pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
-}
 
-impl Format for Include {
-    fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        if let Some(doc) = &self.doc {
-            doc.format(fmt)?;
+    pub fn build(self) -> Include {
+        Include {
+            path: self.path,
+            is_system: self.is_system,
+            doc: self.doc,
         }
-
-        write!(fmt, "#include ")?;
-
-        if self.is_system {
-            writeln!(fmt, "<{}>", self.path)?;
-        } else {
-            writeln!(fmt, "\"{}\"", self.path)?;
-        }
-
-        Ok(())
     }
 }
 
@@ -95,14 +115,8 @@ pub struct ErrorDirective {
 }
 
 impl ErrorDirective {
-    pub fn new(message: String) -> Self {
-        Self { message }
-    }
-
-    pub fn new_with_str(message: &str) -> Self {
-        Self {
-            message: message.to_string(),
-        }
+    pub fn new(message: String) -> ErrorDirectiveBuilder {
+        ErrorDirectiveBuilder::new(message)
     }
 }
 
@@ -112,26 +126,58 @@ impl Format for ErrorDirective {
     }
 }
 
+pub struct ErrorDirectiveBuilder {
+    message: String,
+}
+
+impl ErrorDirectiveBuilder {
+    pub fn new(message: String) -> Self {
+        Self { message }
+    }
+
+    pub fn new_with_str(message: &str) -> Self {
+        Self::new(message.to_string())
+    }
+
+    pub fn build(self) -> ErrorDirective {
+        ErrorDirective {
+            message: self.message,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct PragmaDirective {
     pub raw: String,
 }
 
 impl PragmaDirective {
-    pub fn new(raw: String) -> Self {
-        Self { raw }
-    }
-
-    pub fn new_with_str(raw: &str) -> Self {
-        Self {
-            raw: raw.to_string(),
-        }
+    pub fn new(raw: String) -> PragmaDirectiveBuilder {
+        PragmaDirectiveBuilder::new(raw)
     }
 }
 
 impl Format for PragmaDirective {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         writeln!(fmt, "#pragma {}", self.raw)
+    }
+}
+
+pub struct PragmaDirectiveBuilder {
+    pub raw: String,
+}
+
+impl PragmaDirectiveBuilder {
+    pub fn new(raw: String) -> Self {
+        Self { raw }
+    }
+
+    pub fn new_with_str(raw: &str) -> Self {
+        Self::new(raw.to_string())
+    }
+
+    pub fn build(self) -> PragmaDirective {
+        PragmaDirective { raw: self.raw }
     }
 }
 
@@ -159,30 +205,8 @@ pub struct ObjMacro {
 }
 
 impl ObjMacro {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            value: None,
-            doc: None,
-        }
-    }
-
-    pub fn new_with_value(name: String, value: String) -> Self {
-        Self {
-            name,
-            value: Some(value),
-            doc: None,
-        }
-    }
-
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
-        self.doc = Some(doc);
-        self
-    }
-
-    pub fn set_value(&mut self, value: String) -> &mut Self {
-        self.value = Some(value);
-        self
+    pub fn new(name: String) -> ObjMacroBuilder {
+        ObjMacroBuilder::new(name)
     }
 }
 
@@ -220,6 +244,48 @@ impl Format for ObjMacro {
     }
 }
 
+pub struct ObjMacroBuilder {
+    name: String,
+    value: Option<String>,
+    doc: Option<DocComment>,
+}
+
+impl ObjMacroBuilder {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            value: None,
+            doc: None,
+        }
+    }
+
+    pub fn new_with_str(name: &str) -> Self {
+        Self::new(name.to_string())
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn value(mut self, value: String) -> Self {
+        self.value = Some(value);
+        self
+    }
+
+    pub fn value_with_str(self, value: &str) -> Self {
+        self.value(value.to_string())
+    }
+
+    pub fn build(self) -> ObjMacro {
+        ObjMacro {
+            name: self.name,
+            value: self.value,
+            doc: self.doc,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct FuncMacro {
     pub name: String,
@@ -229,50 +295,8 @@ pub struct FuncMacro {
 }
 
 impl FuncMacro {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            args: vec![],
-            value: "".to_string(),
-            doc: None,
-        }
-    }
-
-    pub fn new_with_args(name: String, args: Vec<String>) -> Self {
-        Self {
-            name,
-            args,
-            value: "".to_string(),
-            doc: None,
-        }
-    }
-
-    pub fn new_with_value(name: String, value: String) -> Self {
-        Self {
-            name,
-            args: vec![],
-            value,
-            doc: None,
-        }
-    }
-
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
-        self.doc = Some(doc);
-        self
-    }
-
-    pub fn push_arg(&mut self, arg: String) -> &mut Self {
-        self.args.push(arg);
-        self
-    }
-
-    pub fn push_variadic_arg(&mut self) -> &mut Self {
-        self.push_arg("...".to_string())
-    }
-
-    pub fn set_value(&mut self, value: String) -> &mut Self {
-        self.value = value;
-        self
+    pub fn new(name: String) -> FuncMacroBuilder {
+        FuncMacroBuilder::new(name)
     }
 }
 
@@ -313,6 +337,70 @@ impl Format for FuncMacro {
         }
     }
 }
+
+pub struct FuncMacroBuilder {
+    name: String,
+    args: Vec<String>,
+    value: String,
+    doc: Option<DocComment>,
+}
+
+impl FuncMacroBuilder {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            args: vec![],
+            value: "".to_string(),
+            doc: None,
+        }
+    }
+
+    pub fn new_with_str(name: &str) -> Self {
+        Self::new(name.to_string())
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn arg(mut self, arg: String) -> Self {
+        self.args.push(arg);
+        self
+    }
+
+    pub fn arg_with_str(self, arg: &str) -> Self {
+        self.arg(arg.to_string())
+    }
+
+    pub fn args(mut self, args: Vec<String>) -> Self {
+        self.args = args;
+        self
+    }
+
+    pub fn variadic_arg(self) -> Self {
+        self.arg_with_str("...")
+    }
+
+    pub fn value(mut self, value: String) -> Self {
+        self.value = value;
+        self
+    }
+
+    pub fn value_with_str(self, value: &str) -> Self {
+        self.value(value.to_string())
+    }
+
+    pub fn build(self) -> FuncMacro {
+        FuncMacro {
+            name: self.name,
+            args: self.args,
+            value: self.value,
+            doc: self.doc,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub enum ScopeOrBlock {
     Scope(Scope),
@@ -330,86 +418,12 @@ impl Format for ScopeOrBlock {
 
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct IfDirective {
-    cond: String,
-    then: ScopeOrBlock,
-    other: Option<ScopeOrBlock>,
+    pub cond: String,
+    pub then: ScopeOrBlock,
+    pub other: Option<ScopeOrBlock>,
 }
 
-impl IfDirective {
-    pub fn new(cond: String) -> Self {
-        Self {
-            cond,
-            then: ScopeOrBlock::Scope(Scope::new()),
-            other: None,
-        }
-    }
-
-    pub fn new_with_empty_then_scope(cond: String) -> Self {
-        Self::new(cond)
-    }
-
-    pub fn new_with_emtpy_then_block(cond: String) -> Self {
-        Self {
-            cond,
-            then: ScopeOrBlock::Block(Block::new()),
-            other: None,
-        }
-    }
-
-    pub fn new_with_then_scope(cond: String, then: Scope) -> Self {
-        Self {
-            cond,
-            then: ScopeOrBlock::Scope(then),
-            other: None,
-        }
-    }
-
-    pub fn new_with_then_block(cond: String, block: Block) -> Self {
-        Self {
-            cond,
-            then: ScopeOrBlock::Block(block),
-            other: None,
-        }
-    }
-
-    pub fn push_global_statement(&mut self, global_stmt: GlobalStatement) -> &mut Self {
-        match &mut self.then {
-            ScopeOrBlock::Scope(then) => {
-                then.push_global_statement(global_stmt);
-            }
-            ScopeOrBlock::Block(_) => {
-                self.set_then(ScopeOrBlock::Scope(Scope::new_with_global_statements(
-                    vec![global_stmt],
-                )));
-            }
-        }
-
-        self
-    }
-
-    pub fn push_block_statement(&mut self, stmt: Statement) -> &mut Self {
-        match &mut self.then {
-            ScopeOrBlock::Block(then) => {
-                then.push_statement(stmt);
-            }
-            ScopeOrBlock::Scope(_) => {
-                self.set_then(ScopeOrBlock::Block(Block::new_with_statements(vec![stmt])));
-            }
-        }
-
-        self
-    }
-
-    pub fn set_then(&mut self, then: ScopeOrBlock) -> &mut Self {
-        self.then = then;
-        self
-    }
-
-    pub fn set_other(&mut self, other: ScopeOrBlock) -> &mut Self {
-        self.other = Some(other);
-        self
-    }
-}
+impl IfDirective {}
 
 impl Format for IfDirective {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
@@ -425,6 +439,64 @@ impl Format for IfDirective {
     }
 }
 
+pub struct IfDirectiveBuilder {
+    cond: String,
+    then: ScopeOrBlock,
+    other: Option<ScopeOrBlock>,
+}
+
+impl IfDirectiveBuilder {
+    pub fn new(cond: String) -> Self {
+        Self {
+            cond,
+            then: ScopeOrBlock::Scope(Scope::new().build()),
+            other: None,
+        }
+    }
+
+    pub fn global_statement(mut self, global_stmt: GlobalStatement) -> Self {
+        match &mut self.then {
+            ScopeOrBlock::Scope(then) => {
+                then.global_stmts.push(global_stmt);
+                self
+            }
+            ScopeOrBlock::Block(_) => self.then(ScopeOrBlock::Scope(
+                Scope::new().global_statement(global_stmt).build(),
+            )),
+        }
+    }
+
+    pub fn block_statement(mut self, stmt: Statement) -> Self {
+        match &mut self.then {
+            ScopeOrBlock::Block(then) => {
+                then.stmts.push(stmt);
+                self
+            }
+            ScopeOrBlock::Scope(_) => self.then(ScopeOrBlock::Block(
+                Block::new().statements(vec![stmt]).build(),
+            )),
+        }
+    }
+
+    pub fn then(mut self, then: ScopeOrBlock) -> Self {
+        self.then = then;
+        self
+    }
+
+    pub fn other(mut self, other: ScopeOrBlock) -> Self {
+        self.other = Some(other);
+        self
+    }
+
+    pub fn build(self) -> IfDirective {
+        IfDirective {
+            cond: self.cond,
+            then: self.then,
+            other: self.other,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct IfDefDirective {
     pub symbol: String,
@@ -434,69 +506,8 @@ pub struct IfDefDirective {
 }
 
 impl IfDefDirective {
-    pub fn new(symbol: String) -> Self {
-        Self {
-            symbol,
-            then: ScopeOrBlock::Scope(Scope::new()),
-            other: None,
-            not: false,
-        }
-    }
-
-    pub fn new_with_empty_then_scope(symbol: String) -> Self {
-        Self::new(symbol)
-    }
-
-    pub fn new_with_emtpy_then_block(symbol: String) -> Self {
-        Self {
-            symbol,
-            then: ScopeOrBlock::Block(Block::new()),
-            other: None,
-            not: false,
-        }
-    }
-
-    pub fn push_global_statement(&mut self, global_stmt: GlobalStatement) -> &mut Self {
-        match &mut self.then {
-            ScopeOrBlock::Scope(then) => {
-                then.push_global_statement(global_stmt);
-            }
-            ScopeOrBlock::Block(_) => {
-                self.set_then(ScopeOrBlock::Scope(Scope::new_with_global_statements(
-                    vec![global_stmt],
-                )));
-            }
-        }
-
-        self
-    }
-
-    pub fn push_block_statement(&mut self, stmt: Statement) -> &mut Self {
-        match &mut self.then {
-            ScopeOrBlock::Block(then) => {
-                then.push_statement(stmt);
-            }
-            ScopeOrBlock::Scope(_) => {
-                self.set_then(ScopeOrBlock::Block(Block::new_with_statements(vec![stmt])));
-            }
-        }
-
-        self
-    }
-
-    pub fn set_then(&mut self, then: ScopeOrBlock) -> &mut Self {
-        self.then = then;
-        self
-    }
-
-    pub fn set_other(&mut self, other: ScopeOrBlock) -> &mut Self {
-        self.other = Some(other);
-        self
-    }
-
-    pub fn set_not(&mut self) -> &mut Self {
-        self.not = true;
-        self
+    pub fn new(symbol: String) -> IfDefDirectiveBuilder {
+        IfDefDirectiveBuilder::new(symbol)
     }
 }
 
@@ -518,6 +529,76 @@ impl Format for IfDefDirective {
     }
 }
 
+pub struct IfDefDirectiveBuilder {
+    symbol: String,
+    then: ScopeOrBlock,
+    other: Option<ScopeOrBlock>,
+    not: bool,
+}
+
+impl IfDefDirectiveBuilder {
+    pub fn new(symbol: String) -> Self {
+        Self {
+            symbol,
+            then: ScopeOrBlock::Scope(Scope::new().build()),
+            other: None,
+            not: false,
+        }
+    }
+
+    pub fn new_with_str(symbol: &str) -> Self {
+        Self::new(symbol.to_string())
+    }
+
+    pub fn global_statement(mut self, global_stmt: GlobalStatement) -> Self {
+        match &mut self.then {
+            ScopeOrBlock::Scope(then) => {
+                then.global_stmts.push(global_stmt);
+                self
+            }
+            ScopeOrBlock::Block(_) => self.then(ScopeOrBlock::Scope(
+                Scope::new().global_statement(global_stmt).build(),
+            )),
+        }
+    }
+
+    pub fn block_statement(mut self, stmt: Statement) -> Self {
+        match &mut self.then {
+            ScopeOrBlock::Block(then) => {
+                then.stmts.push(stmt);
+                self
+            }
+            ScopeOrBlock::Scope(_) => {
+                self.then(ScopeOrBlock::Block(Block::new().statement(stmt).build()))
+            }
+        }
+    }
+
+    pub fn then(mut self, then: ScopeOrBlock) -> Self {
+        self.then = then;
+        self
+    }
+
+    pub fn other(mut self, other: ScopeOrBlock) -> Self {
+        self.other = Some(other);
+        self
+    }
+
+    pub fn not(mut self) -> Self {
+        self.not = true;
+        self
+    }
+
+    pub fn build(self) -> IfDefDirective {
+        IfDefDirective {
+            symbol: self.symbol,
+            then: self.then,
+            other: self.other,
+            not: self.not,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct LineDirective {
     pub line: u64,
@@ -527,27 +608,8 @@ pub struct LineDirective {
 }
 
 impl LineDirective {
-    pub fn new(line: u64, path: String) -> Self {
-        Self {
-            line,
-            path,
-            is_system: false,
-            doc: None,
-        }
-    }
-
-    pub fn new_system(line: u64, path: String) -> Self {
-        Self {
-            line,
-            path,
-            is_system: true,
-            doc: None,
-        }
-    }
-
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
-        self.doc = Some(doc);
-        self
+    pub fn new(line: u64, path: String) -> LineDirectiveBuilder {
+        LineDirectiveBuilder::new(line, path)
     }
 }
 
@@ -569,25 +631,80 @@ impl Format for LineDirective {
     }
 }
 
+pub struct LineDirectiveBuilder {
+    line: u64,
+    path: String,
+    is_system: bool,
+    doc: Option<DocComment>,
+}
+
+impl LineDirectiveBuilder {
+    pub fn new(line: u64, path: String) -> Self {
+        Self {
+            line,
+            path,
+            is_system: false,
+            doc: None,
+        }
+    }
+
+    pub fn new_with_str(line: u64, path: &str) -> Self {
+        Self::new(line, path.to_string())
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn system(mut self) -> Self {
+        self.is_system = true;
+        self
+    }
+
+    pub fn build(self) -> LineDirective {
+        LineDirective {
+            line: self.line,
+            path: self.path,
+            is_system: self.is_system,
+            doc: self.doc,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct WarningDirective {
     pub message: String,
 }
 
 impl WarningDirective {
-    pub fn new(message: String) -> Self {
-        Self { message }
-    }
-
-    pub fn new_with_str(message: &str) -> Self {
-        Self {
-            message: message.to_string(),
-        }
+    pub fn new(message: String) -> WarningDirectiveBuilder {
+        WarningDirectiveBuilder::new(message)
     }
 }
 
 impl Format for WarningDirective {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         writeln!(fmt, "#warning \"{}\"", self.message)
+    }
+}
+
+pub struct WarningDirectiveBuilder {
+    message: String,
+}
+
+impl WarningDirectiveBuilder {
+    pub fn new(message: String) -> Self {
+        Self { message }
+    }
+
+    pub fn new_with_str(message: &str) -> Self {
+        Self::new(message.to_string())
+    }
+
+    pub fn build(self) -> WarningDirective {
+        WarningDirective {
+            message: self.message,
+        }
     }
 }

@@ -36,27 +36,8 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new() -> Self {
-        Self { stmts: vec![] }
-    }
-
-    pub fn new_with_statements(stmts: Vec<Statement>) -> Self {
-        Self { stmts }
-    }
-
-    pub fn merge(&mut self, other: &mut Block) -> &mut Self {
-        self.stmts.append(&mut other.stmts);
-        self
-    }
-
-    pub fn push_statement(&mut self, stmt: Statement) -> &mut Self {
-        self.stmts.push(stmt);
-        self
-    }
-
-    pub fn push_new_line(&mut self) -> &mut Self {
-        self.stmts.push(Statement::NewLine);
-        self
+    pub fn new() -> BlockBuilder {
+        BlockBuilder::new()
     }
 }
 
@@ -67,6 +48,39 @@ impl Format for Block {
         }
 
         Ok(())
+    }
+}
+
+pub struct BlockBuilder {
+    stmts: Vec<Statement>,
+}
+
+impl BlockBuilder {
+    pub fn new() -> Self {
+        Self { stmts: vec![] }
+    }
+
+    pub fn statement(mut self, stmt: Statement) -> Self {
+        self.stmts.push(stmt);
+        self
+    }
+
+    pub fn statements(mut self, stmts: Vec<Statement>) -> Self {
+        self.stmts = stmts;
+        self
+    }
+
+    pub fn new_line(self) -> Self {
+        self.statement(Statement::NewLine)
+    }
+
+    pub fn merge(mut self, mut other: Block) -> Self {
+        self.stmts.append(&mut other.stmts);
+        self
+    }
+
+    pub fn build(self) -> Block {
+        Block { stmts: self.stmts }
     }
 }
 
@@ -134,18 +148,18 @@ impl Format for Statement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BaseType, Type};
+    use crate::*;
 
     #[test]
     fn statement() {
-        let mut c = Comment::new();
-        c.set_comment_with_str("Hello");
-        let mut s = Statement::Comment(c);
+        let mut s = Statement::Comment(Comment::new().comment_with_str("Hello").build());
         assert_eq!(s.to_string(), "// Hello\n");
 
-        let mut t = Type::new(BaseType::Size);
-        t.make_const().make_pointer();
-        s = Statement::Variable(Variable::new("abc".to_string(), t));
+        let t = Type::new(BaseType::Size)
+            .make_const()
+            .make_pointer()
+            .build();
+        s = Statement::Variable(VariableBuilder::new_with_str("abc", t).build());
         assert_eq!(s.to_string(), "const size_t* abc;\n");
 
         s = Statement::Return(None);
@@ -168,16 +182,19 @@ mod tests {
 
     #[test]
     fn blocks() {
-        let mut b1 = Block::new();
-        b1.push_statement(Statement::Raw("abc".to_string()))
-            .push_new_line()
-            .push_new_line();
+        let b1 = Block::new()
+            .statement(Statement::Raw("abc".to_string()))
+            .new_line()
+            .new_line()
+            .build();
 
         assert_eq!(b1.stmts.len(), 3);
         assert_eq!(b1.to_string(), "abc\n\n\n");
 
-        let mut b2 = Block::new_with_statements(vec![Statement::Raw("something else".to_string())]);
-        b2.merge(&mut b1);
+        let b2 = Block::new()
+            .statements(vec![Statement::Raw("something else".to_string())])
+            .merge(b1)
+            .build();
 
         assert_eq!(b2.to_string(), "something else\nabc\n\n\n");
     }

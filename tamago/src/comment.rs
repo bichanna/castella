@@ -35,39 +35,8 @@ pub struct Comment {
 }
 
 impl Comment {
-    pub fn new() -> Self {
-        Self {
-            comment: String::new(),
-            is_heading: false,
-        }
-    }
-
-    pub fn new_with_str(comment: &str) -> Self {
-        Self {
-            comment: comment.to_string(),
-            is_heading: false,
-        }
-    }
-
-    pub fn new_with_comment(comment: String) -> Self {
-        Self {
-            comment,
-            is_heading: false,
-        }
-    }
-
-    pub fn set_comment(&mut self, comment: String) -> &mut Self {
-        self.comment = comment;
-        self
-    }
-
-    pub fn set_comment_with_str(&mut self, comment: &str) -> &mut Self {
-        self.set_comment(comment.to_string())
-    }
-
-    pub fn set_heading(&mut self) -> &mut Self {
-        self.is_heading = true;
-        self
+    pub fn new() -> CommentBuilder {
+        CommentBuilder::new()
     }
 
     fn push_heading(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
@@ -89,59 +58,56 @@ impl Format for Comment {
     }
 }
 
+pub struct CommentBuilder {
+    comment: String,
+    is_heading: bool,
+}
+
+impl CommentBuilder {
+    pub fn new() -> Self {
+        Self {
+            comment: String::new(),
+            is_heading: false,
+        }
+    }
+
+    pub fn new_with_str(comment: &str) -> Self {
+        Self {
+            comment: comment.to_string(),
+            is_heading: false,
+        }
+    }
+
+    pub fn comment(mut self, comment: String) -> Self {
+        self.comment = comment;
+        self
+    }
+
+    pub fn comment_with_str(self, comment: &str) -> Self {
+        self.comment(comment.to_string())
+    }
+
+    pub fn heading(mut self, b: bool) -> Self {
+        self.is_heading = b;
+        self
+    }
+
+    pub fn build(self) -> Comment {
+        Comment {
+            comment: self.comment,
+            is_heading: self.is_heading,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct DocComment {
     pub docs: Vec<String>,
 }
 
 impl DocComment {
-    pub fn new() -> Self {
-        Self { docs: vec![] }
-    }
-
-    pub fn push_line(&mut self, line: String) -> &mut Self {
-        self.push_line_str(&line)
-    }
-
-    pub fn push_line_str(&mut self, line: &str) -> &mut Self {
-        self.docs.push(if line.is_empty() {
-            String::new()
-        } else {
-            line.to_string()
-        });
-        self
-    }
-
-    pub fn push_text(&mut self, text: String) -> &mut Self {
-        self.push_text_str(&text)
-    }
-
-    pub fn push_text_str(&mut self, text: &str) -> &mut Self {
-        let mut res = self;
-        for line in text.lines() {
-            if line.is_empty() || line == "\n" {
-                res = res.push_line_str("");
-                continue;
-            }
-
-            let mut start = 0;
-            let mut end = 0;
-            for (offset, c) in line.chars().enumerate() {
-                if c == ' ' && (offset - start) > 80 {
-                    res = res.push_line_str(&line[start..=end]);
-                    start = end;
-                }
-                end = offset;
-            }
-
-            if start == end {
-                res = res.push_line_str("");
-            } else {
-                res = res.push_line_str(&line[start..=end]);
-            }
-        }
-
-        res
+    pub fn new() -> DocCommentBuilder {
+        DocCommentBuilder::new()
     }
 }
 
@@ -154,26 +120,84 @@ impl Format for DocComment {
     }
 }
 
+pub struct DocCommentBuilder {
+    docs: Vec<String>,
+}
+
+impl DocCommentBuilder {
+    pub fn new() -> Self {
+        Self { docs: vec![] }
+    }
+
+    pub fn line(self, line: String) -> Self {
+        self.line_str(&line)
+    }
+
+    pub fn line_str(mut self, line: &str) -> Self {
+        self.docs.push(if line.is_empty() {
+            String::new()
+        } else {
+            line.to_string()
+        });
+        self
+    }
+
+    pub fn text(self, text: String) -> Self {
+        self.text_str(&text)
+    }
+
+    pub fn text_str(self, text: &str) -> Self {
+        let mut res = self;
+        for line in text.lines() {
+            if line.is_empty() || line == "\n" {
+                res = res.line_str("");
+                continue;
+            }
+
+            let mut start = 0;
+            let mut end = 0;
+            for (offset, c) in line.chars().enumerate() {
+                if c == ' ' && (offset - start) > 80 {
+                    res = res.line_str(&line[start..=end]);
+                    start = end;
+                }
+                end = offset;
+            }
+
+            if start == end {
+                res = res.line_str("");
+            } else {
+                res = res.line_str(&line[start..=end]);
+            }
+        }
+
+        res
+    }
+
+    pub fn build(self) -> DocComment {
+        DocComment { docs: self.docs }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn comment() {
-        let mut c = Comment::new();
-        c.set_comment_with_str("hello");
-        assert_eq!(c.to_string(), "// hello\n");
-        c = Comment::new();
-        c.set_comment_with_str("abc").set_heading();
+        let mut c = CommentBuilder::new_with_str("Hello, world").build();
+        assert_eq!(c.to_string(), "// Hello, world\n");
+
+        c = CommentBuilder::new_with_str("abc").heading(true).build();
         assert_eq!(c.to_string(), "////////////////////////////////////////////////////////////////////////////////\n// abc\n////////////////////////////////////////////////////////////////////////////////\n");
     }
 
     #[test]
     fn doc_comment() {
-        let mut c = DocComment::new();
-        c.push_text_str("Hello\nworld");
+        let mut c = DocComment::new().text_str("Hello\nworld").build();
         assert_eq!(c.to_string(), "/// Hello\n/// world\n");
-        c.push_line_str("ABC");
-        assert_eq!(c.to_string(), "/// Hello\n/// world\n/// ABC\n");
+
+        c = DocComment::new().line_str("ABC").build();
+        assert_eq!(c.to_string(), "/// ABC\n");
     }
 }

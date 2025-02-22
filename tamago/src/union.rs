@@ -33,34 +33,12 @@ pub struct Union {
 }
 
 impl Union {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            fields: vec![],
-            doc: None,
-        }
-    }
-
-    pub fn new_with_fields(name: String, fields: Vec<Field>) -> Self {
-        Self {
-            name,
-            fields,
-            doc: None,
-        }
-    }
-
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
-        self.doc = Some(doc);
-        self
-    }
-
-    pub fn push_field(&mut self, field: Field) -> &mut Self {
-        self.fields.push(field);
-        self
+    pub fn new(name: String) -> UnionBuilder {
+        UnionBuilder::new(name)
     }
 
     pub fn to_type(&self) -> Type {
-        Type::new(BaseType::Union(self.name.clone()))
+        Type::new(BaseType::Union(self.name.clone())).build()
     }
 }
 
@@ -82,5 +60,48 @@ impl Format for Union {
         }
 
         writeln!(fmt, ";")
+    }
+}
+
+pub struct UnionBuilder {
+    name: String,
+    fields: Vec<Field>,
+    doc: Option<DocComment>,
+}
+
+impl UnionBuilder {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            fields: vec![],
+            doc: None,
+        }
+    }
+
+    pub fn new_with_str(name: &str) -> Self {
+        Self::new(name.to_string())
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn field(mut self, field: Field) -> Self {
+        self.fields.push(field);
+        self
+    }
+
+    pub fn fields(mut self, fields: Vec<Field>) -> Self {
+        self.fields = fields;
+        self
+    }
+
+    pub fn build(self) -> Union {
+        Union {
+            name: self.name,
+            fields: self.fields,
+            doc: self.doc,
+        }
     }
 }

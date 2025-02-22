@@ -32,25 +32,8 @@ pub struct While {
 }
 
 impl While {
-    pub fn new(cond: Expr) -> Self {
-        Self {
-            cond,
-            body: Block::new(),
-        }
-    }
-
-    pub fn new_with_body(cond: Expr, body: Block) -> Self {
-        Self { cond, body }
-    }
-
-    pub fn set_body(&mut self, body: Block) -> &mut Self {
-        self.body = body;
-        self
-    }
-
-    pub fn push_statement(&mut self, stmt: Statement) -> &mut Self {
-        self.body.push_statement(stmt);
-        self
+    pub fn new(cond: Expr) -> WhileBuilder {
+        WhileBuilder::new(cond)
     }
 }
 
@@ -64,6 +47,37 @@ impl Format for While {
     }
 }
 
+pub struct WhileBuilder {
+    cond: Expr,
+    body: Block,
+}
+
+impl WhileBuilder {
+    pub fn new(cond: Expr) -> Self {
+        Self {
+            cond,
+            body: Block::new().build(),
+        }
+    }
+
+    pub fn body(mut self, body: Block) -> Self {
+        self.body = body;
+        self
+    }
+
+    pub fn statement(mut self, stmt: Statement) -> Self {
+        self.body.stmts.push(stmt);
+        self
+    }
+
+    pub fn build(self) -> Self {
+        WhileBuilder {
+            cond: self.cond,
+            body: self.body,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct DoWhile {
     pub cond: Expr,
@@ -71,25 +85,8 @@ pub struct DoWhile {
 }
 
 impl DoWhile {
-    pub fn new(cond: Expr) -> Self {
-        Self {
-            cond,
-            body: Block::new(),
-        }
-    }
-
-    pub fn new_with_body(cond: Expr, body: Block) -> Self {
-        Self { cond, body }
-    }
-
-    pub fn set_body(&mut self, body: Block) -> &mut Self {
-        self.body = body;
-        self
-    }
-
-    pub fn push_statement(&mut self, stmt: Statement) -> &mut Self {
-        self.body.push_statement(stmt);
-        self
+    pub fn new(cond: Expr) -> DoWhileBuilder {
+        DoWhileBuilder::new(cond)
     }
 }
 
@@ -104,6 +101,37 @@ impl Format for DoWhile {
     }
 }
 
+pub struct DoWhileBuilder {
+    cond: Expr,
+    body: Block,
+}
+
+impl DoWhileBuilder {
+    pub fn new(cond: Expr) -> Self {
+        Self {
+            cond,
+            body: Block::new().build(),
+        }
+    }
+
+    pub fn body(mut self, body: Block) -> Self {
+        self.body = body;
+        self
+    }
+
+    pub fn statement(mut self, stmt: Statement) -> Self {
+        self.body.stmts.push(stmt);
+        self
+    }
+
+    pub fn build(self) -> DoWhileBuilder {
+        DoWhileBuilder {
+            cond: self.cond,
+            body: self.body,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct For {
     pub init: Option<Expr>,
@@ -113,38 +141,60 @@ pub struct For {
 }
 
 impl For {
+    pub fn new() -> ForBuilder {
+        ForBuilder::new()
+    }
+}
+
+pub struct ForBuilder {
+    init: Option<Expr>,
+    cond: Option<Expr>,
+    step: Option<Expr>,
+    body: Block,
+}
+
+impl ForBuilder {
     pub fn new() -> Self {
         Self {
             init: None,
             cond: None,
             step: None,
-            body: Block::new(),
+            body: Block::new().build(),
         }
     }
 
-    pub fn set_init(&mut self, init: Expr) -> &mut Self {
+    pub fn init(mut self, init: Expr) -> Self {
         self.init = Some(init);
         self
     }
 
-    pub fn set_cond(&mut self, cond: Expr) -> &mut Self {
+    pub fn cond(mut self, cond: Expr) -> Self {
         self.cond = Some(cond);
         self
     }
 
-    pub fn set_step(&mut self, step: Expr) -> &mut Self {
+    pub fn step(mut self, step: Expr) -> Self {
         self.step = Some(step);
         self
     }
 
-    pub fn set_body(&mut self, body: Block) -> &mut Self {
+    pub fn body(mut self, body: Block) -> Self {
         self.body = body;
         self
     }
 
-    pub fn push_statement(&mut self, stmt: Statement) -> &mut Self {
-        self.body.push_statement(stmt);
+    pub fn statement(mut self, stmt: Statement) -> Self {
+        self.body.stmts.push(stmt);
         self
+    }
+
+    pub fn build(self) -> ForBuilder {
+        ForBuilder {
+            init: self.init,
+            cond: self.cond,
+            step: self.step,
+            body: self.body,
+        }
     }
 }
 

@@ -36,21 +36,23 @@ mod types;
 mod union;
 mod variable;
 
-pub use block::{Block, Statement};
-pub use comment::{Comment, DocComment};
-pub use conditional::{If, Switch};
-pub use enums::{Enum, Variant};
+pub use block::{Block, BlockBuilder, Statement};
+pub use comment::{Comment, CommentBuilder, DocComment};
+pub use conditional::{If, IfBuilder, Switch, SwitchBuilder};
+pub use enums::{Enum, EnumBuilder, Variant, VariantBuilder};
 pub use expr::{AssignOp, BinOp, Expr, UnaryOp};
 pub use formatter::{Format, Formatter};
-pub use function::{Function, Parameter};
-pub use loops::{DoWhile, For, While};
+pub use function::{Function, FunctionBuilder, Parameter, ParameterBuilder};
+pub use loops::{DoWhile, DoWhileBuilder, For, ForBuilder, While, WhileBuilder};
 pub use preprocessor::{
-    ErrorDirective, FuncMacro, IfDefDirective, IfDirective, Include, LineDirective, Macro,
-    ObjMacro, PragmaDirective, ScopeOrBlock, WarningDirective,
+    ErrorDirective, ErrorDirectiveBuilder, FuncMacro, FuncMacroBuilder, IfDefDirective,
+    IfDefDirectiveBuilder, IfDirective, IfDirectiveBuilder, Include, IncludeBuilder, LineDirective,
+    Macro, ObjMacro, ObjMacroBuilder, PragmaDirective, PragmaDirectiveBuilder, ScopeOrBlock,
+    WarningDirective, WarningDirectiveBuilder,
 };
-pub use scope::{GlobalStatement, Scope};
-pub use structs::{Field, Struct};
-pub use typedef::TypeDef;
-pub use types::{BaseType, Type, TypeQualifier};
-pub use union::Union;
-pub use variable::Variable;
+pub use scope::{GlobalStatement, Scope, ScopeBuilder};
+pub use structs::{Field, FieldBuilder, Struct, StructBuilder};
+pub use typedef::{TypeDef, TypeDefBuilder};
+pub use types::{BaseType, Type, TypeBuilder, TypeQualifier};
+pub use union::{Union, UnionBuilder};
+pub use variable::{Variable, VariableBuilder};

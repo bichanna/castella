@@ -36,46 +36,8 @@ pub struct Variable {
 }
 
 impl Variable {
-    pub fn new(name: String, t: Type) -> Self {
-        Self {
-            name,
-            t,
-            value: None,
-            is_static: false,
-            is_extern: false,
-            doc: None,
-        }
-    }
-
-    pub fn new_with_value(name: String, t: Type, value: Expr) -> Self {
-        Self {
-            name,
-            t,
-            value: Some(value),
-            is_static: false,
-            is_extern: false,
-            doc: None,
-        }
-    }
-
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
-        self.doc = Some(doc);
-        self
-    }
-
-    pub fn set_static(&mut self) -> &mut Self {
-        self.is_static = true;
-        self
-    }
-
-    pub fn set_extern(&mut self) -> &mut Self {
-        self.is_extern = true;
-        self
-    }
-
-    pub fn set_raw_value(&mut self, value: String) -> &mut Self {
-        self.value = Some(Expr::Raw(value));
-        self
+    pub fn new(name: String, t: Type) -> VariableBuilder {
+        VariableBuilder::new(name, t)
     }
 
     pub fn to_type(&self) -> Type {
@@ -112,5 +74,67 @@ impl Format for Variable {
         }
 
         writeln!(fmt, ";")
+    }
+}
+
+pub struct VariableBuilder {
+    name: String,
+    t: Type,
+    value: Option<Expr>,
+    is_static: bool,
+    is_extern: bool,
+    doc: Option<DocComment>,
+}
+
+impl VariableBuilder {
+    pub fn new(name: String, t: Type) -> Self {
+        Self {
+            name,
+            t,
+            value: None,
+            is_static: false,
+            is_extern: false,
+            doc: None,
+        }
+    }
+
+    pub fn new_with_str(name: &str, t: Type) -> Self {
+        Self::new(name.to_string(), t)
+    }
+
+    pub fn value(mut self, value: Expr) -> Self {
+        self.value = Some(value);
+        self
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn make_static(mut self) -> Self {
+        self.is_static = true;
+        self
+    }
+
+    pub fn make_extern(mut self) -> Self {
+        self.is_extern = true;
+        self
+    }
+
+    pub fn raw_value(mut self, value: String) -> Self {
+        self.value = Some(Expr::Raw(value));
+        self
+    }
+
+    pub fn build(self) -> Variable {
+        Variable {
+            name: self.name,
+            t: self.t,
+            value: self.value,
+            is_static: self.is_static,
+            is_extern: self.is_extern,
+            doc: self.doc,
+        }
     }
 }

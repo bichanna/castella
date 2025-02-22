@@ -23,11 +23,7 @@
 
 use std::fmt::{self, Write};
 
-use crate::{
-    Comment, DocComment, Enum, ErrorDirective, Format, Formatter, Function, IfDefDirective,
-    IfDirective, Include, LineDirective, Macro, PragmaDirective, Struct, TypeDef, Union, Variable,
-    WarningDirective,
-};
+use crate::*;
 use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]
@@ -37,38 +33,8 @@ pub struct Scope {
 }
 
 impl Scope {
-    pub fn new() -> Self {
-        Self {
-            doc: None,
-            global_stmts: vec![],
-        }
-    }
-
-    pub fn new_with_global_statements(global_stmts: Vec<GlobalStatement>) -> Self {
-        Self {
-            doc: None,
-            global_stmts,
-        }
-    }
-
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
-        self.doc = Some(doc);
-        self
-    }
-
-    pub fn set_global_statements(&mut self, global_stmts: Vec<GlobalStatement>) -> &mut Self {
-        self.global_stmts = global_stmts;
-        self
-    }
-
-    pub fn push_global_statement(&mut self, global_stmt: GlobalStatement) -> &mut Self {
-        self.global_stmts.push(global_stmt);
-        self
-    }
-
-    pub fn push_new_line(&mut self) -> &mut Self {
-        self.push_global_statement(GlobalStatement::NewLine);
-        self
+    pub fn new() -> ScopeBuilder {
+        ScopeBuilder::new()
     }
 }
 
@@ -83,6 +49,46 @@ impl Format for Scope {
         }
 
         Ok(())
+    }
+}
+
+pub struct ScopeBuilder {
+    doc: Option<DocComment>,
+    global_stmts: Vec<GlobalStatement>,
+}
+
+impl ScopeBuilder {
+    pub fn new() -> Self {
+        Self {
+            doc: None,
+            global_stmts: vec![],
+        }
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn global_statements(mut self, global_stmts: Vec<GlobalStatement>) -> Self {
+        self.global_stmts = global_stmts;
+        self
+    }
+
+    pub fn global_statement(mut self, global_stmt: GlobalStatement) -> Self {
+        self.global_stmts.push(global_stmt);
+        self
+    }
+
+    pub fn new_line(self) -> Self {
+        self.global_statement(GlobalStatement::NewLine)
+    }
+
+    pub fn build(self) -> Scope {
+        Scope {
+            doc: self.doc,
+            global_stmts: self.global_stmts,
+        }
     }
 }
 

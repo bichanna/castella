@@ -27,40 +27,18 @@ use tamacro::DisplayFromFormat;
 
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Enum {
-    name: String,
-    variants: Vec<Variant>,
-    doc: Option<DocComment>,
+    pub name: String,
+    pub variants: Vec<Variant>,
+    pub doc: Option<DocComment>,
 }
 
 impl Enum {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            variants: vec![],
-            doc: None,
-        }
-    }
-
-    pub fn new_with_variants(name: String, variants: Vec<Variant>) -> Self {
-        Self {
-            name,
-            variants,
-            doc: None,
-        }
-    }
-
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
-        self.doc = Some(doc);
-        self
-    }
-
-    pub fn push_variant(&mut self, variant: Variant) -> &mut Self {
-        self.variants.push(variant);
-        self
+    pub fn new(name: String) -> EnumBuilder {
+        EnumBuilder::new(name)
     }
 
     pub fn to_type(&self) -> Type {
-        Type::new(BaseType::Enum(self.name.clone()))
+        Type::new(BaseType::Enum(self.name.clone())).build()
     }
 }
 
@@ -85,6 +63,53 @@ impl Format for Enum {
     }
 }
 
+pub struct EnumBuilder {
+    name: String,
+    variants: Vec<Variant>,
+    doc: Option<DocComment>,
+}
+
+impl EnumBuilder {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            variants: vec![],
+            doc: None,
+        }
+    }
+
+    pub fn new_with_str(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            variants: vec![],
+            doc: None,
+        }
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn variant(mut self, variant: Variant) -> Self {
+        self.variants.push(variant);
+        self
+    }
+
+    pub fn variants(mut self, variants: Vec<Variant>) -> Self {
+        self.variants = variants;
+        self
+    }
+
+    pub fn build(self) -> Enum {
+        Enum {
+            name: self.name,
+            variants: self.variants,
+            doc: self.doc,
+        }
+    }
+}
+
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Variant {
     pub name: String,
@@ -93,30 +118,8 @@ pub struct Variant {
 }
 
 impl Variant {
-    pub fn new(name: String) -> Self {
-        Self {
-            name,
-            value: None,
-            doc: None,
-        }
-    }
-
-    pub fn new_with_value(name: String, value: i64) -> Self {
-        Self {
-            name,
-            value: Some(value),
-            doc: None,
-        }
-    }
-
-    pub fn set_doc(&mut self, doc: DocComment) -> &mut Self {
-        self.doc = Some(doc);
-        self
-    }
-
-    pub fn set_value(&mut self, value: i64) -> &mut Self {
-        self.value = Some(value);
-        self
+    pub fn new(name: String) -> VariantBuilder {
+        VariantBuilder::new(name)
     }
 }
 
@@ -133,5 +136,47 @@ impl Format for Variant {
         }
 
         Ok(())
+    }
+}
+
+pub struct VariantBuilder {
+    name: String,
+    value: Option<i64>,
+    doc: Option<DocComment>,
+}
+
+impl VariantBuilder {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            value: None,
+            doc: None,
+        }
+    }
+
+    pub fn new_with_str(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            value: None,
+            doc: None,
+        }
+    }
+
+    pub fn doc(mut self, doc: DocComment) -> Self {
+        self.doc = Some(doc);
+        self
+    }
+
+    pub fn value(mut self, value: i64) -> Self {
+        self.value = Some(value);
+        self
+    }
+
+    pub fn build(self) -> Variant {
+        Variant {
+            name: self.name,
+            value: self.value,
+            doc: self.doc,
+        }
     }
 }
