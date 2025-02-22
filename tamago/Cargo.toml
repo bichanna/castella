@@ -12,4 +12,4 @@ readme = "README.md"
 keywords = ["code", "generator", "code_generator"]
 
 [dependencies]
-tamacro = { path = "tamacro", version = "0.1.0" }
+tamacro = { path = "./tamacro", version = "0.1.0" }
