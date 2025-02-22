@@ -3,6 +3,11 @@ name = "tamacro"
 version = "0.1.0"
 edition = "2024"
 
+license =-"MIT"
+authors = ["Nobuharu Shimazu <nobu.bichanna@gmail.com>"]
+homepage = "https://github.com/bichanna/castella/tree/main/tamago/tamacro"
+readme = "README.md"
+
 [lib]
 proc-macro = true
 
