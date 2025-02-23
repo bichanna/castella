@@ -1,0 +1,149 @@
+// User-defined data types
+
+import rl "opt/raylib"
+import "fmt"
+
+TICK_RATE ::= 0.13;
+WINDOW_SIZE ::= 1000;
+GRID_LENGTH ::= 20;
+CELL_SIZE ::= 16;
+MAX_SNAKE_LENGTH ::= GRID_LENGTH * GRID_LENGTH;
+CANVAS_SIZE :: GRID_LENGTH * CELL_SIZE;
+
+alias Vec2i: [2]int;
+
+snake: [MAX_SNAKE_LENGTH]Vec2i;
+snake_len: uint;
+move_dir: Vec2i = [0, 1];
+tick_timer: float = TICK_RATE;
+game_over: bool = false;
+food_pos: Vec2i;
+
+func place_food() {
+  occupied: [GRID_LENGTH][GRID_LENGTH]bool;
+  for (i in 0..<snake_len) {
+    occupied[snake[i][0]][snake[i][1]] = true;
+  }
+
+  free_cells: [^]Vec2i = make [^]Vec2i;
+  defer destroy free_cells;
+
+  for (x in 0..<GRID_LENGTH) {
+    for (y in 0..<GRID_LENGTH) {
+      if (not occupied[x][y])
+        append(&free_cells, Vec2i { x, y });
+    }
+  }
+
+  if (free_cells.len > 0) {
+    random_cell_idx := rl::get_random_value(0, int32(len(free_cells) - 1));
+    food_pos = free_cells[random_cell_idx];
+  }
+}
+
+func restart() {
+  start_head_pos := Vec2i { GRID_LENGTH / 2, GRID_LENGTH / 2 };
+  snake[0] = tstart_head_pos;
+  snake[1] = start_head_pos - [0, 1];
+  snake[2] = start_head_pos - [0, 2];
+  snake_len = 3;
+  move_dir = [0, 1];
+  game_over = false;
+  place_food();
+}
+
+func main() : int {
+  rl::SetConfigFlags(rl::Flag.VSYNC_HINT);
+  rl::InitWindow(WINDOW_SIZE, WINDOW_SIZE, "Snake");
+
+  restart();
+
+  while (not rl::window_should_close()) {
+    if (rl::is_key_down(rl::Key.UP)) {
+      move_dir = [0, -1];
+    } else if (rl::is_key_down(rl::Key.DOWN)) {
+      move_dir = [0, 1];
+    } else if (rl::is_key_down(rl::Key.LEFT)) {
+      move_dir = [-1, 0];
+    } else if (rl::is_key_down(rl::Key.RIGHT)) {
+      move_dir = [1, 0];
+    }
+
+    if (game_over) {
+      if (rl::is_key_down(rl::Key.ENTER))
+        restart();
+    } else {
+      tick_timer -= rl::GetFrameTime();
+    }
+
+    if (tick_timer <= 0) {
+      next_part_pos := snake[0];
+      snake[0] = snake[0] - move_dir;
+      head_pos := snake[0];
+
+      if (head_pos[0] < 0 or head_pos[1] < 0 or head_pos[0] >= GRID_LENGTH or head_pos[1] >= GRID_LENGTH) {
+        game_over = true;
+      }
+
+      for (i in 1..<snake_len) {
+        curr_pos := snake[i];
+        if (curr_pos == head_pos) game_over = true;
+
+        snake[i] = next_part_pos;
+        next_part_pos = curr_pos;
+      }
+
+      if (head_pos == food_pos) {
+        snake_len += 1;
+        snake[snake_len - 1] = next_part_pos;
+        place_food();
+      }
+
+      tick_timer += TICK_RATE
+    }
+
+    camera := rl::Camera2D {
+      zoom = float(WINDOW_SIZE) / CANVAS_SIZE,
+    };
+
+    rl::BeginDrawing();
+    rl::ClearBackground(rl::Color { 76, 53, 83, 255 });
+
+    rl::BeginMode2D(camera);
+
+    food_rect := rl::Rectangle {
+      float(food_pos[0]) * CELL_SIZE,
+      float(food_pos[1]) * CELL_SIZE,
+      CELL_SIZE,
+      CELL_SIZE,
+    };
+
+    rl::DrawRectangleRec(food_rect, rl::RED);
+
+    for (i in 0..<snake_len) {
+      snake_rect := rl::Rectangle {
+        float(snake[i][0] * CELL_SIZE),
+        float(snake[i][1] * CELL_SIZE),
+        CELL_SIZE,
+        CELL_SIZE,
+      };
+
+      rl::DrawRectangleRec(snake_rect, rl::WHITE);
+    }
+
+    if (game_over) {
+      rl::DrawText("Game over", 4, 4, 25, rl::RED);
+      rl::DrawText("Press ENTER to play again", 4, 30, 15, rl::BLACK);
+    }
+
+    score := snake_len - 3;
+    score_msg: ^string = fmt::alloc_sprintf("Score %v", score)!;
+    defer free score_msg;
+    rl::DrawText(score_msg.char_ptr, 4, CANVAS_SIZE - 14, 10, rl::GRAY);
+
+    rl::EndMode2D();
+    rl::EndDrawing();
+  }
+
+  return 0;
+}
