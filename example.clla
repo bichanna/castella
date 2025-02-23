@@ -1,5 +1,3 @@
-// User-defined data types
-
 import rl "opt/raylib"
 import "fmt"
 

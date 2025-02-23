@@ -30,12 +30,29 @@ use crate::{
 };
 use tamacro::DisplayFromFormat;
 
+/// Represents a non-global block of code in C, such as the body of a function, loop,
+/// conditional, or similar construct. A `Block` contains a sequence of statements
+/// that are executed together within the scope of the block.
+///
+/// # Examples
+/// A `Block` might represent the body of a C function like:
+/// ```c
+/// int ret_integer() {
+///     int x = 5;
+///     return x;
+/// }
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Block {
+    /// Holds a bunch of statements that make up the block's content
     pub stmts: Vec<Statement>,
 }
 
 impl Block {
+    /// Creates and returns a new `BlockBuilder` to construct a `Block` using the builder pattern.
+    /// ```rust
+    /// let block = Block::new().statement(/*some statement*/).build();
+    /// ```
     pub fn new() -> BlockBuilder {
         BlockBuilder::new()
     }
@@ -51,63 +68,125 @@ impl Format for Block {
     }
 }
 
+/// A builder for constructing a `Block` instance.
 pub struct BlockBuilder {
     stmts: Vec<Statement>,
 }
 
 impl BlockBuilder {
+    /// Creates and returns a new `BlockBuilder` to construct a `Block` using the builder pattern.
+    /// ```rust
+    /// let block = BlockBuilder::new().statement(/*some statement*/).build();
+    /// ```
     pub fn new() -> Self {
         Self { stmts: vec![] }
     }
 
+    /// Appends the provided `Statement` to the block and returns the builder for chaining more
+    /// operations.
     pub fn statement(mut self, stmt: Statement) -> Self {
         self.stmts.push(stmt);
         self
     }
 
+    /// Sets the block's statements to the provided statements, replacing any existing ones. This
+    /// consumes and returns `BlockBuilder`.
     pub fn statements(mut self, stmts: Vec<Statement>) -> Self {
         self.stmts = stmts;
         self
     }
 
+    /// Appends a `Statement::NewLine` to the block's statements. This consumes and returns
+    /// `BlockBuilder` for chaining additional operations.
     pub fn new_line(self) -> Self {
         self.statement(Statement::NewLine)
     }
 
+    /// Merges the statements from another `Block` into this statement list, consuming and
+    /// returning `BlockBuilder` for chaining more operations.
     pub fn merge(mut self, mut other: Block) -> Self {
         self.stmts.append(&mut other.stmts);
         self
     }
 
+    /// Consumes the builder and returns a `Block` containing all the statements added during the
+    /// building process.
     pub fn build(self) -> Block {
         Block { stmts: self.stmts }
     }
 }
 
+/// Encapsulates types of statements and preprocessor directives that can appear within a `Block`,
+/// like expressions, control flow, variable declarations, and more.
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub enum Statement {
+    /// A C-style comment
     Comment(Comment),
+
+    /// A variable declaration
     Variable(Variable),
+
+    /// An expression statement.
     Expr(Expr),
+
+    /// A return statement, optionally with an expression
     Return(Option<Expr>),
+
+    /// A break statement
     Break,
+
+    /// A continue statement
     Continue,
+
+    /// A goto statement with a label name
     GoTo(String),
+
+    /// A label declaration
     Label(String),
+
+    /// An if statement
     If(If),
+
+    /// A switch statement
     Switch(Switch),
+
+    /// A while loop
     While(While),
+
+    /// A do-while loop
     DoWhile(DoWhile),
+
+    /// A for loop
     For(For),
+
+    /// A `#error` preprocessor directive
     ErrorDirective(ErrorDirective),
+
+    /// A `#ifdef` preprocessor directive
     IfDefDirective(IfDefDirective),
+
+    /// A `#if` preprocessor directive
     IfDirective(IfDirective),
+
+    /// An `#include` directive
     Include(Include),
+
+    /// A `#line` preprocessor directive
     LineDirective(LineDirective),
+
+    /// A macro definition
     Macro(Macro),
+
+    /// A `#pragma` directive
     PragmaDirective(PragmaDirective),
+
+    /// A `#warning` directive
     WarningDirective(WarningDirective),
+
+    /// A raw string of C code
     Raw(String),
+
+    /// A standalone new line for formatting
     NewLine,
 }
 

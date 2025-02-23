@@ -25,6 +25,16 @@ use std::fmt::{self, Write};
 use crate::{Block, Expr, Format, Formatter, Statement};
 use tamacro::DisplayFromFormat;
 
+/// Represents an if statement in C.
+///
+/// # Examples
+/// ```c
+/// if (cond) {
+///   // then block
+/// } else {
+///   // other block
+/// }
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct If {
     pub cond: Expr,
@@ -33,6 +43,13 @@ pub struct If {
 }
 
 impl If {
+    /// Creates and returns a new `IfBuilder` to construct a `If` using the builder pattern.
+    /// ```rust
+    /// let i = If::new(/*cond expr*/)
+    ///     .then(/*then block*/)
+    ///     .other(/*other block*/)
+    ///     .build();
+    /// ```
     pub fn new(cond: Expr) -> IfBuilder {
         IfBuilder::new(cond)
     }
@@ -55,6 +72,7 @@ impl Format for If {
     }
 }
 
+/// A builder for constructing a `If` instance.
 pub struct IfBuilder {
     cond: Expr,
     then: Block,
@@ -62,6 +80,13 @@ pub struct IfBuilder {
 }
 
 impl IfBuilder {
+    /// Creates and returns a new `IfBuilder` to construct a `If` using the builder pattern.
+    /// ```rust
+    /// let i = IfBuilder::new(/*cond expr*/)
+    ///     .then(/*then block*/)
+    ///     .other(/*other block*/)
+    ///     .build();
+    /// ```
     pub fn new(cond: Expr) -> Self {
         Self {
             cond,
@@ -70,6 +95,8 @@ impl IfBuilder {
         }
     }
 
+    /// Creates and returns a new `IfBuilder` to construct a `If` using the builder pattern with
+    /// the given condition and then block.
     pub fn new_with_then(cond: Expr, then: Block) -> Self {
         Self {
             cond,
@@ -78,21 +105,27 @@ impl IfBuilder {
         }
     }
 
+    /// Sets the then block for the builder, and returns the builder for more chaining.
     pub fn then(mut self, then: Block) -> Self {
         self.then = then;
         self
     }
 
+    /// Sets the other block for the builder, and returns the builder for more chaining.
     pub fn other(mut self, other: Block) -> Self {
         self.other = Some(other);
         self
     }
 
+    /// Appends a statement to the then block for the builder, and returns the builder for more
+    /// chaining.
     pub fn statement_to_then(mut self, stmt: Statement) -> Self {
         self.then.stmts.push(stmt);
         self
     }
 
+    /// Consumes the builder and returns a `If` containing all the condition, then block, and other
+    /// block added during building process.
     pub fn build(self) -> If {
         If {
             cond: self.cond,
@@ -102,6 +135,20 @@ impl IfBuilder {
     }
 }
 
+/// Represents a switch statement in C code.
+/// ```c
+/// switch (cond) {
+/// case 1: {
+///   // a block
+/// }
+/// case 2: {
+///   // another block
+/// }
+/// default: {
+///   // default block
+/// }
+/// }
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Switch {
     pub cond: Expr,
@@ -110,6 +157,15 @@ pub struct Switch {
 }
 
 impl Switch {
+    /// Creates and returns a new `SwitchBuilder` to construct a `Switch` using the buidler
+    /// pattern.
+    /// ```rust
+    /// let s = Switch::new(/*cond*/)
+    ///     .case(/*case and its block*/)
+    ///     .case(/*another case and its block*/)
+    ///     .default(/*default block*/)
+    ///     .build();
+    /// ```
     pub fn new(cond: Expr) -> SwitchBuilder {
         SwitchBuilder::new(cond)
     }
@@ -140,6 +196,20 @@ impl Format for Switch {
     }
 }
 
+/// Represents a switch statement in C code.
+/// ```c
+/// switch (cond) {
+/// case 1: {
+///   // a block
+/// }
+/// case 2: {
+///   // another block
+/// }
+/// default: {
+///   // default block
+/// }
+/// }
+/// ```
 pub struct SwitchBuilder {
     cond: Expr,
     cases: Vec<(Expr, Block)>,
@@ -147,6 +217,15 @@ pub struct SwitchBuilder {
 }
 
 impl SwitchBuilder {
+    /// Creates and returns a new `SwitchBuilder` to construct a `Switch` using the buidler
+    /// pattern.
+    /// ```rust
+    /// let s = Switch::new(/*cond*/)
+    ///     .case(/*case and its block*/)
+    ///     .case(/*another case and its block*/)
+    ///     .default(/*default block*/)
+    ///     .build();
+    /// ```
     pub fn new(cond: Expr) -> Self {
         Self {
             cond,
@@ -155,6 +234,8 @@ impl SwitchBuilder {
         }
     }
 
+    /// Creates and returns a new `SwitchBuilder` to construct a `Switch` using the builder pattern
+    /// with the given condition and cases.
     pub fn new_with_cases(cond: Expr, cases: Vec<(Expr, Block)>) -> Self {
         Self {
             cond,
@@ -163,21 +244,28 @@ impl SwitchBuilder {
         }
     }
 
+    /// Appends the provided `Expr` condition and `Block` as a case to the switch statement and
+    /// returns the builder for chaining more operations.
     pub fn case(mut self, c: Expr, b: Block) -> Self {
         self.cases.push((c, b));
         self
     }
 
+    /// Sets the switch cases to the provided cases, replacing any existing ones. This consumes and
+    /// returns the builder for chaining more operations.
     pub fn cases(mut self, cases: Vec<(Expr, Block)>) -> Self {
         self.cases = cases;
         self
     }
 
+    /// Sets the default case of the switch statement to the provided case.
     pub fn default(mut self, default: Block) -> Self {
         self.default = Some(default);
         self
     }
 
+    /// Consumes the builder and returns a `Switch` containing all the cases added during the
+    /// building process.
     pub fn build(self) -> Switch {
         Switch {
             cond: self.cond,

@@ -25,6 +25,16 @@ use std::fmt::{self, Write};
 use crate::{Format, Formatter};
 use tamacro::DisplayFromFormat;
 
+/// Represents a C-style comment, supporting both regular and heading-style comments.
+///
+/// # Examples
+/// ```c
+/// // Some comment
+///
+/// ////////////////////////////////////////////////////////////////////////////////
+/// // Some heading comment
+/// ////////////////////////////////////////////////////////////////////////////////
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Comment {
     /// The comment string
@@ -35,6 +45,11 @@ pub struct Comment {
 }
 
 impl Comment {
+    /// Creates and returns a new `CommentBuilder` to construct a `Comment` using the builder
+    /// pattern.
+    /// ```rust
+    /// let comment = Comment::new().comment_with_str("Some comment").build();
+    /// ```
     pub fn new() -> CommentBuilder {
         CommentBuilder::new()
     }
@@ -58,12 +73,18 @@ impl Format for Comment {
     }
 }
 
+/// A builder for constructing a `Comment` instance.
 pub struct CommentBuilder {
     comment: String,
     is_heading: bool,
 }
 
 impl CommentBuilder {
+    /// Creates and returns a new `CommentBuilder` to construct a `Comment` using the builder
+    /// pattern.
+    /// ```rust
+    /// let comment = Comment::new().comment_with_str("Some comment").build();
+    /// ```
     pub fn new() -> Self {
         Self {
             comment: String::new(),
@@ -71,6 +92,7 @@ impl CommentBuilder {
         }
     }
 
+    /// Creates a new `CommentBuilder` from a string slice, defaulting to a non-heading comment.
     pub fn new_with_str(comment: &str) -> Self {
         Self {
             comment: comment.to_string(),
@@ -78,20 +100,26 @@ impl CommentBuilder {
         }
     }
 
+    /// Sets the comment string for the builder, and returns the builder for more chaining.
     pub fn comment(mut self, comment: String) -> Self {
         self.comment = comment;
         self
     }
 
+    /// Sets the comment string with a string slice for the builder, and returns the builder for
+    /// more chaining.
     pub fn comment_with_str(self, comment: &str) -> Self {
         self.comment(comment.to_string())
     }
 
+    /// Sets whether the comment is a heading comment, and returns the builder for more chaining.
     pub fn heading(mut self, b: bool) -> Self {
         self.is_heading = b;
         self
     }
 
+    /// Consumes the builder and returns a `Comment` containing all the statements added during the
+    /// building process.
     pub fn build(self) -> Comment {
         Comment {
             comment: self.comment,
@@ -100,12 +128,21 @@ impl CommentBuilder {
     }
 }
 
+/// Represents a documentation comment block in C code.
+/// ```c
+/// /// Some doc comment
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct DocComment {
     pub docs: Vec<String>,
 }
 
 impl DocComment {
+    /// Creates and returns a new `DocCommentBuilder` to construct a `DocComment` using the builder
+    /// pattern.
+    /// ```rust
+    /// let doc_comment = DocComment::new().line_str("Some doc comment").build();
+    /// ```
     pub fn new() -> DocCommentBuilder {
         DocCommentBuilder::new()
     }
@@ -120,19 +157,28 @@ impl Format for DocComment {
     }
 }
 
+/// A builder for constructing a `DocComment` instance.
 pub struct DocCommentBuilder {
     docs: Vec<String>,
 }
 
 impl DocCommentBuilder {
+    /// Creates and returns a new `DocCommentBuilder` to construct a `DocComment` using the builder
+    /// pattern.
+    /// ```rust
+    /// let doc_comment = DocComment::new().line_str("Some doc comment").build();
+    /// ```
     pub fn new() -> Self {
         Self { docs: vec![] }
     }
 
+    /// Appends the provided string to the doc comment and returns the builder for chaining more.
     pub fn line(self, line: String) -> Self {
         self.line_str(&line)
     }
 
+    /// Appends the provided string slice to the doc comment and returns the builder for chaining
+    /// more operations.
     pub fn line_str(mut self, line: &str) -> Self {
         self.docs.push(if line.is_empty() {
             String::new()
@@ -142,10 +188,14 @@ impl DocCommentBuilder {
         self
     }
 
+    /// Appends the provided multi-line string text to the doc comment and returns the builder for
+    /// chaining more.
     pub fn text(self, text: String) -> Self {
         self.text_str(&text)
     }
 
+    /// Appends the provided multi-line string slice text to the doc comment and returns the
+    /// builder for chaining more operations.
     pub fn text_str(self, text: &str) -> Self {
         let mut res = self;
         for line in text.lines() {
@@ -174,6 +224,8 @@ impl DocCommentBuilder {
         res
     }
 
+    /// Consumes the builder and returns a `DocComment` containing the documentation comment built
+    /// during the building process.
     pub fn build(self) -> DocComment {
         DocComment { docs: self.docs }
     }
