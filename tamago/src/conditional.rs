@@ -37,8 +37,11 @@ use tamacro::DisplayFromFormat;
 /// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct If {
+    /// The condition of the if statement
     pub cond: Expr,
+    /// The then block of the if statement
     pub then: Block,
+    /// Optional else block of the if statement
     pub other: Option<Block>,
 }
 
@@ -299,7 +302,7 @@ mod tests {
         )
         .build();
 
-        let i = IfBuilder::new(Expr::ConstBool(true))
+        let i = IfBuilder::new(Expr::Bool(true))
             .then(
                 BlockBuilder::new()
                     .statements(vec![
@@ -331,7 +334,7 @@ mod tests {
 
     #[test]
     fn switch_condition() {
-        let s = SwitchBuilder::new(Expr::ConstBool(true))
+        let s = SwitchBuilder::new(Expr::Bool(true))
             .case(
                 Expr::new_null(),
                 Block::new()
@@ -342,7 +345,7 @@ mod tests {
                     .build(),
             )
             .case(
-                Expr::new_cast(Type::new(BaseType::UInt8).build(), Expr::ConstInt(123)),
+                Expr::new_cast(Type::new(BaseType::UInt8).build(), Expr::Int(123)),
                 Block::new()
                     .statement(Statement::Macro(Macro::Obj(
                         ObjMacroBuilder::new_with_str("AGE")

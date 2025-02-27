@@ -25,91 +25,103 @@ use std::fmt::{self, Write};
 use crate::{Format, Formatter, Type, Variable};
 use tamacro::{DisplayFromConstSymbol, DisplayFromFormat, FormatFromConstSymbol};
 
+/// Encapsulates all types of expressions in C, like binary, unary, literal, ternary, variables,
+/// function calls, and more.
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub enum Expr {
-    ConstInt(i64),
+    /// A signed integer literal.
+    Int(i64),
 
-    ConstUInt(u64),
+    /// A unsigned integer literal.
+    UInt(u64),
 
-    ConstDouble(f64),
+    /// A double precision floating pointer number literal.
+    Double(f64),
 
-    ConstFloat(f32),
+    /// A single precision floating pointer number literal.
+    Float(f32),
 
-    ConstBool(bool),
+    /// A boolean.
+    Bool(bool),
 
-    ConstChar(char),
+    /// A one-byte character.
+    Char(char),
 
-    ConstStr(String),
+    /// A string literal.
+    Str(String),
 
+    /// An identifier.
     Ident(String),
 
+    /// Variable declration (could be definition as well)
     Variable(Box<Variable>),
 
+    /// A binary expression, like `1 + 1`.
     Binary {
         left: Box<Expr>,
         op: BinOp,
         right: Box<Expr>,
     },
 
-    Unary {
-        op: UnaryOp,
-        expr: Box<Expr>,
-    },
+    /// A unary expression, like `-1`.
+    Unary { op: UnaryOp, expr: Box<Expr> },
 
+    /// A variable assignment.
     Assign {
         lvalue: Box<Expr>,
         op: AssignOp,
         value: Box<Expr>,
     },
 
+    /// A ternary operator, like `cond ? true_expr : false_expr`
     Ternary {
         cond: Box<Expr>,
         lexpr: Box<Expr>,
         rexpr: Box<Expr>,
     },
 
-    FnCall {
-        name: Box<Expr>,
-        args: Vec<Expr>,
-    },
+    /// A function call.
+    FnCall { name: Box<Expr>, args: Vec<Expr> },
 
-    MemAccess {
-        expr: Box<Expr>,
-        member: String,
-    },
+    /// A struct member access.
+    MemAccess { expr: Box<Expr>, member: String },
 
-    ArrIndex {
-        arr: Box<Expr>,
-        idx: Box<Expr>,
-    },
+    /// Indexing an array
+    ArrIndex { arr: Box<Expr>, idx: Box<Expr> },
 
-    Cast {
-        t: Type,
-        expr: Box<Expr>,
-    },
+    /// Type casting
+    Cast { t: Type, expr: Box<Expr> },
 
+    /// `sizeof` operator
     SizeOf(Type),
 
+    /// Array initialization. Could be either ordered or designated.
     InitArr(Vec<(Option<usize>, Box<Expr>)>),
 
+    /// Struct instance initialization. Could be either ordered or designated.
     InitStruct(Vec<(Option<String>, Box<Expr>)>),
 
+    /// A raw piece of expression in C.
     Raw(String),
 }
 
 impl Expr {
+    /// Creates a new identifier.
     pub fn new_ident(name: String) -> Self {
         Self::Ident(name)
     }
 
+    /// Creates a new identifier with the given string slice
     pub fn new_ident_with_str(name: &str) -> Self {
         Self::new_ident(name.to_string())
     }
 
+    /// Creates a new `NULL`
     pub fn new_null() -> Self {
         Self::new_ident("NULL".to_string())
     }
 
+    /// Creates a new binary expression with the given expressions and binary operator
     pub fn new_binary(left: Expr, op: BinOp, right: Expr) -> Self {
         Self::Binary {
             left: Box::new(left),
@@ -118,6 +130,7 @@ impl Expr {
         }
     }
 
+    /// Creates a new unary expression with the given expression and unary operator
     pub fn new_unary(expr: Expr, op: UnaryOp) -> Self {
         Self::Unary {
             expr: Box::new(expr),
@@ -125,6 +138,8 @@ impl Expr {
         }
     }
 
+    /// Creates a new assignment with the given lvalue, the expression, and the assignment
+    /// operator
     pub fn new_assign(lvalue: Expr, op: AssignOp, value: Expr) -> Self {
         Self::Assign {
             lvalue: Box::new(lvalue),
@@ -133,6 +148,7 @@ impl Expr {
         }
     }
 
+    /// Creates a new ternary expression with the given condition and expressions.
     pub fn new_ternary(cond: Expr, lexpr: Expr, rexpr: Expr) -> Self {
         Self::Ternary {
             cond: Box::new(cond),
@@ -141,6 +157,7 @@ impl Expr {
         }
     }
 
+    /// Creates a new function call expression with the given name and the arguments.
     pub fn new_fn_call(name: Expr, args: Vec<Expr>) -> Self {
         Self::FnCall {
             name: Box::new(name),
@@ -148,6 +165,8 @@ impl Expr {
         }
     }
 
+    /// Creates a new function call expression with the given name as a string slice and the
+    /// arguments
     pub fn new_fn_call_with_name(name: String, args: Vec<Expr>) -> Self {
         Self::FnCall {
             name: Box::new(Self::Ident(name)),
@@ -155,6 +174,7 @@ impl Expr {
         }
     }
 
+    /// Creates a struct member access expression with the given member string
     pub fn new_mem_access(expr: Expr, member: String) -> Self {
         Self::MemAccess {
             expr: Box::new(expr),
@@ -162,6 +182,13 @@ impl Expr {
         }
     }
 
+    /// Creates a struct member access expression with the given member string slice
+    pub fn new_mem_access_with_str(expr: Expr, member: &str) -> Self {
+        Self::new_mem_access(expr, member.to_string())
+    }
+
+    /// Creates a new array indexing expression with the given array expression and the index
+    /// expression
     pub fn new_arr_index(arr: Expr, idx: Expr) -> Self {
         Self::ArrIndex {
             arr: Box::new(arr),
@@ -169,6 +196,7 @@ impl Expr {
         }
     }
 
+    /// Creates a new type cast expression with the given expression
     pub fn new_cast(t: Type, expr: Expr) -> Self {
         Self::Cast {
             t,
@@ -176,10 +204,12 @@ impl Expr {
         }
     }
 
+    /// Creates a new `sizeof` operator for the given expression
     pub fn new_sizeof(t: Type) -> Self {
         Self::SizeOf(t)
     }
 
+    /// Creates a new in-order array initialization expression
     pub fn new_init_arr_in_order(exprs: Vec<Expr>) -> Self {
         Self::InitArr(
             exprs
@@ -189,6 +219,7 @@ impl Expr {
         )
     }
 
+    /// Creates a new designated array initialization expression
     pub fn new_init_arr_designated(x: Vec<usize>, y: Vec<Expr>) -> Self {
         assert!(x.len() == y.len());
         Self::InitArr(
@@ -200,6 +231,7 @@ impl Expr {
         )
     }
 
+    /// Creates a new in-order struct initialization expression
     pub fn new_init_struct_in_order(exprs: Vec<Expr>) -> Self {
         Self::InitStruct(
             exprs
@@ -209,6 +241,7 @@ impl Expr {
         )
     }
 
+    /// Creates a new designated struct initializastion expression
     pub fn new_init_struct_designated(x: Vec<String>, y: Vec<Expr>) -> Self {
         Self::InitStruct(
             x.iter()
@@ -224,13 +257,13 @@ impl Format for Expr {
     fn format(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use Expr::*;
         match self {
-            ConstInt(num) => write!(fmt, "{num}"),
-            ConstUInt(num) => write!(fmt, "{num}"),
-            ConstDouble(num) => write!(fmt, "{num}"),
-            ConstFloat(num) => write!(fmt, "{num}f"),
-            ConstBool(b) => write!(fmt, "{}", if *b { "true" } else { "false" }),
-            ConstChar(c) => write!(fmt, "'{c}'"),
-            ConstStr(s) => write!(fmt, "\"{s}\""),
+            Int(num) => write!(fmt, "{num}"),
+            UInt(num) => write!(fmt, "{num}"),
+            Double(num) => write!(fmt, "{num}"),
+            Float(num) => write!(fmt, "{num}f"),
+            Bool(b) => write!(fmt, "{}", if *b { "true" } else { "false" }),
+            Char(c) => write!(fmt, "'{c}'"),
+            Str(s) => write!(fmt, "\"{s}\""),
             Ident(name) => write!(fmt, "{name}"),
             Variable(var) => var.format(fmt),
             Binary { left, op, right } => {
@@ -351,6 +384,7 @@ impl Format for Expr {
     }
 }
 
+/// Encapsulates binary operator
 #[derive(Debug, Clone, DisplayFromConstSymbol, FormatFromConstSymbol)]
 pub enum BinOp {
     #[symbol = "+"]
@@ -408,6 +442,7 @@ pub enum BinOp {
     RShift,
 }
 
+/// Encapsulates unary operators
 #[derive(Debug, Clone, DisplayFromConstSymbol, FormatFromConstSymbol)]
 pub enum UnaryOp {
     #[symbol = "++"]
@@ -432,6 +467,7 @@ pub enum UnaryOp {
     Deref,
 }
 
+/// Encapsulates assign operators
 #[derive(Debug, Clone, DisplayFromConstSymbol, FormatFromConstSymbol)]
 pub enum AssignOp {
     #[symbol = "="]
@@ -476,9 +512,9 @@ mod tests {
     #[test]
     fn binary() {
         let b = Expr::new_binary(
-            Expr::new_binary(Expr::ConstInt(123), BinOp::LT, Expr::ConstInt(321)),
+            Expr::new_binary(Expr::Int(123), BinOp::LT, Expr::Int(321)),
             BinOp::BitOr,
-            Expr::new_binary(Expr::ConstDouble(1.23), BinOp::Sub, Expr::ConstFloat(3.21)),
+            Expr::new_binary(Expr::Double(1.23), BinOp::Sub, Expr::Float(3.21)),
         );
         let res = "((123 < 321) | (1.23 - 3.21f))";
         assert_eq!(b.to_string(), res);
@@ -502,7 +538,7 @@ mod tests {
         let a = Expr::new_assign(
             Expr::Ident("abc".to_string()),
             AssignOp::SubAssign,
-            Expr::ConstInt(123),
+            Expr::Int(123),
         );
         let res = "(abc -= 123)";
         assert_eq!(a.to_string(), res);
@@ -510,7 +546,7 @@ mod tests {
         let b = Expr::new_assign(
             Expr::Ident("abc".to_string()),
             AssignOp::BitAndAssign,
-            Expr::ConstBool(false),
+            Expr::Bool(false),
         );
         let res = "(abc &= false)";
         assert_eq!(b.to_string(), res);
@@ -519,9 +555,9 @@ mod tests {
     #[test]
     fn ternary() {
         let t = Expr::new_ternary(
-            Expr::ConstBool(true),
-            Expr::ConstStr("hello".to_string()),
-            Expr::ConstStr("olleh".to_string()),
+            Expr::Bool(true),
+            Expr::Str("hello".to_string()),
+            Expr::Str("olleh".to_string()),
         );
         let res = r#"(true ? "hello" : "olleh")"#;
         assert_eq!(t.to_string(), res);
@@ -536,7 +572,7 @@ mod tests {
         let f2 = Expr::new_fn_call(
             Expr::Ident("some_func".to_string()),
             vec![
-                Expr::ConstChar('a'),
+                Expr::Char('a'),
                 Expr::new_sizeof(Type::new(BaseType::Char).build()),
             ],
         );
@@ -553,7 +589,7 @@ mod tests {
 
     #[test]
     fn arr_index() {
-        let a = Expr::new_arr_index(Expr::Ident("some_arr".to_string()), Expr::ConstInt(5));
+        let a = Expr::new_arr_index(Expr::Ident("some_arr".to_string()), Expr::Int(5));
         let res = "some_arr[5]";
         assert_eq!(a.to_string(), res);
     }
@@ -577,21 +613,13 @@ mod tests {
 
     #[test]
     fn init_arr() {
-        let i = Expr::new_init_arr_in_order(vec![
-            Expr::ConstInt(1),
-            Expr::ConstInt(3),
-            Expr::ConstInt(2),
-        ]);
+        let i = Expr::new_init_arr_in_order(vec![Expr::Int(1), Expr::Int(3), Expr::Int(2)]);
         let res = "{1, 3, 2}";
         assert_eq!(i.to_string(), res);
 
         let i2 = Expr::new_init_arr_designated(
             vec![0, 1, 2],
-            vec![
-                Expr::ConstFloat(1.1),
-                Expr::ConstFloat(2.1),
-                Expr::ConstFloat(4.4),
-            ],
+            vec![Expr::Float(1.1), Expr::Float(2.1), Expr::Float(4.4)],
         );
         let res2 = "{[0]=1.1f, [1]=2.1f, [2]=4.4f}";
         assert_eq!(i2.to_string(), res2);
@@ -600,16 +628,16 @@ mod tests {
     #[test]
     fn init_struct() {
         let i = Expr::new_init_struct_in_order(vec![
-            Expr::ConstStr("abc".to_string()),
-            Expr::ConstInt(15),
-            Expr::ConstChar('x'),
+            Expr::Str("abc".to_string()),
+            Expr::Int(15),
+            Expr::Char('x'),
         ]);
         let res = "{\"abc\", 15, 'x'}";
         assert_eq!(i.to_string(), res);
 
         let i2 = Expr::new_init_struct_designated(
             vec!["name".to_string(), "age".to_string()],
-            vec![Expr::ConstStr("bichanna".to_string()), Expr::ConstInt(18)],
+            vec![Expr::Str("bichanna".to_string()), Expr::Int(18)],
         );
         let res2 = "{.name=\"bichanna\", .age=18}";
         assert_eq!(i2.to_string(), res2);

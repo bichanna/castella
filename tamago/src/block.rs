@@ -251,7 +251,7 @@ mod tests {
 
         s = Statement::Return(None);
         assert_eq!(s.to_string(), "return;\n");
-        s = Statement::Return(Some(Expr::ConstUInt(123)));
+        s = Statement::Return(Some(Expr::UInt(123)));
         assert_eq!(s.to_string(), "return 123;\n");
 
         s = Statement::Break;

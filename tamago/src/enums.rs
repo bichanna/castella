@@ -3,8 +3,7 @@
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
 //
 // The above copyright notice and this permission notice shall be included in all
@@ -25,6 +24,18 @@ use std::fmt::{self, Write};
 use crate::{BaseType, DocComment, Format, Formatter, Type};
 use tamacro::DisplayFromFormat;
 
+/// Represents an enum statement in C.
+///
+/// # Examples
+/// ```c
+/// enum Weekday {
+///   MONDAY,
+///   TUESDAY,
+///   WEDNESDAY,
+///   THURSDAY,
+///   FRIDAY,
+/// };
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Enum {
     pub name: String,
@@ -33,10 +44,18 @@ pub struct Enum {
 }
 
 impl Enum {
+    /// Creates and returns a new `EnumBuilder` to construct an `enum` using the builder pattern.
+    /// ```rust
+    /// let e = Enum::new(/*name of the enum*/)
+    ///     .variant(/*set a variant*/)
+    ///     .variant(/*set another variant*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String) -> EnumBuilder {
         EnumBuilder::new(name)
     }
 
+    /// Returns the type of this enum.
     pub fn to_type(&self) -> Type {
         Type::new(BaseType::Enum(self.name.clone())).build()
     }
@@ -63,6 +82,7 @@ impl Format for Enum {
     }
 }
 
+/// A builder for construction an `Enum` instance.
 pub struct EnumBuilder {
     name: String,
     variants: Vec<Variant>,
@@ -70,6 +90,13 @@ pub struct EnumBuilder {
 }
 
 impl EnumBuilder {
+    /// Creates and returns a new `EnumBuilder` to construct an `Enum` using the builder pattern.
+    /// ```rust
+    /// let e = Enum::new(/*name of the enum*/)
+    ///     .variant(/*set a variant*/)
+    ///     .variant(/*set another variant*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String) -> Self {
         Self {
             name,
@@ -78,6 +105,8 @@ impl EnumBuilder {
         }
     }
 
+    /// Creates and returns a new `EnumBuilder` to construct an `Enum` using the builder pattern
+    /// with the given name.
     pub fn new_with_str(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -86,21 +115,26 @@ impl EnumBuilder {
         }
     }
 
+    /// Sets the doc comment for the enum being built, and returns the buidler for more chaining.
     pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
 
+    /// Appends a variant to the enum being built and returns the builder for more chaining.
     pub fn variant(mut self, variant: Variant) -> Self {
         self.variants.push(variant);
         self
     }
 
+    /// Sets the variants of the enum being built and returns the builder for more chaining.
     pub fn variants(mut self, variants: Vec<Variant>) -> Self {
         self.variants = variants;
         self
     }
 
+    /// Consumes the builder and returns an `Enum` containing all the variants added during
+    /// building process.
     pub fn build(self) -> Enum {
         Enum {
             name: self.name,
@@ -110,6 +144,7 @@ impl EnumBuilder {
     }
 }
 
+/// Represents an enum variant in C with an optionally defined integer value.
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Variant {
     pub name: String,
@@ -118,6 +153,8 @@ pub struct Variant {
 }
 
 impl Variant {
+    /// Creates and returns a new `VariantBuilder` to construct a `Variant` using the builder
+    /// pattern.
     pub fn new(name: String) -> VariantBuilder {
         VariantBuilder::new(name)
     }
@@ -139,6 +176,7 @@ impl Format for Variant {
     }
 }
 
+/// A builder for constructing a `Variant` instance.
 pub struct VariantBuilder {
     name: String,
     value: Option<i64>,
@@ -146,6 +184,8 @@ pub struct VariantBuilder {
 }
 
 impl VariantBuilder {
+    /// Creates and returns a new `VariantBuilder` to construct a `Variant` using the builder
+    /// pattern.
     pub fn new(name: String) -> Self {
         Self {
             name,
@@ -154,6 +194,8 @@ impl VariantBuilder {
         }
     }
 
+    /// Creates and returns a new `VariantBuilder` to construct a `Variant` with the given string
+    /// slice using the builder pattern.
     pub fn new_with_str(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -162,16 +204,19 @@ impl VariantBuilder {
         }
     }
 
+    /// Sets the doc comment for the variant and returns the builder for more chaining.
     pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
 
+    /// Sets the optional value for the variant and returns the builder for more chaining.
     pub fn value(mut self, value: i64) -> Self {
         self.value = Some(value);
         self
     }
 
+    /// Consumes the builder and returns a `Variant` from the builder.
     pub fn build(self) -> Variant {
         Variant {
             name: self.name,

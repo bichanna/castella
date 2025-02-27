@@ -134,6 +134,7 @@ impl CommentBuilder {
 /// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct DocComment {
+    /// Lines of doc comment
     pub docs: Vec<String>,
 }
 
