@@ -25,14 +25,31 @@ use std::fmt::{self, Write};
 use crate::*;
 use tamacro::DisplayFromFormat;
 
+/// Represents the `include` preprocessor directive in C.
+///
+/// # Examples
+/// ```c
+/// #include <stdio.h>
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Include {
+    /// The path to the header file.
     pub path: String,
+
+    /// Whether it's a system import or not.
     pub is_system: bool,
+
+    /// The optional doc comment
     pub doc: Option<DocComment>,
 }
 
 impl Include {
+    /// Creates and returns a new `IncludeBuilder` to construct an `Include` using the builder
+    /// pattern.
+    /// ```rust
+    /// let include = Include::new(/*path to the header file*/)
+    ///     .build();
+    /// ```
     pub fn new(path: String) -> IncludeBuilder {
         IncludeBuilder::new(path)
     }
@@ -56,6 +73,7 @@ impl Format for Include {
     }
 }
 
+/// A builder for constructing a `Include` instance.
 pub struct IncludeBuilder {
     path: String,
     is_system: bool,
@@ -63,6 +81,12 @@ pub struct IncludeBuilder {
 }
 
 impl IncludeBuilder {
+    /// Creates and returns a new `IncludeBuilder` to construct an `Include` using the builder
+    /// pattern.
+    /// ```rust
+    /// let include = IncludeBuilder::new(/*path to the header file*/)
+    ///     .build();
+    /// ```
     pub fn new(path: String) -> Self {
         Self {
             path,
@@ -71,6 +95,8 @@ impl IncludeBuilder {
         }
     }
 
+    /// Creates and returns a new `IncludeBuilder` to construct an `Include` with the given path
+    /// string slice.
     pub fn new_with_str(path: &str) -> Self {
         Self {
             path: path.to_string(),
@@ -79,6 +105,7 @@ impl IncludeBuilder {
         }
     }
 
+    /// Creates and returns a new `IncludeBuilder` to construct a system `Include` with the given path string.
     pub fn new_system(path: String) -> Self {
         Self {
             path,
@@ -87,6 +114,8 @@ impl IncludeBuilder {
         }
     }
 
+    /// Creates and returns a new `IncludeBuilder` to construct a system `Include` with the given
+    /// path string slice.
     pub fn new_system_with_str(path: &str) -> Self {
         Self {
             path: path.to_string(),
@@ -95,11 +124,13 @@ impl IncludeBuilder {
         }
     }
 
+    /// Sets the optional doc for the include directive.
     pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
 
+    /// Consumes the builder and returns an `Include` containing the path to the header file.
     pub fn build(self) -> Include {
         Include {
             path: self.path,
@@ -109,12 +140,25 @@ impl IncludeBuilder {
     }
 }
 
+/// Represents the `error` preprocessor directive in C.
+///
+/// # Examples
+/// ```c
+/// #error "error message"
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct ErrorDirective {
+    /// The error message to be displayed.
     pub message: String,
 }
 
 impl ErrorDirective {
+    /// Creates and returns a new `ErrorDirectiveBuilder` to construct an `ErrorDirective` using
+    /// the builder pattern.
+    /// ```rust
+    /// let err = ErrorDirective::new(/*error message*/)
+    ///     .build();
+    /// ```
     pub fn new(message: String) -> ErrorDirectiveBuilder {
         ErrorDirectiveBuilder::new(message)
     }
@@ -126,19 +170,29 @@ impl Format for ErrorDirective {
     }
 }
 
+/// A buidle for constructing an `ErrorDirective` instance.
 pub struct ErrorDirectiveBuilder {
     message: String,
 }
 
 impl ErrorDirectiveBuilder {
+    /// Creates and returns a new `ErrorDirectiveBuilder` to construct an `ErrorDirective` using
+    /// the buidler pattern.
+    /// ```rust
+    /// let err = ErrorDirectiveBuilder::new(/*error message*/)
+    ///     .build();
+    /// ```
     pub fn new(message: String) -> Self {
         Self { message }
     }
 
+    /// Creates and returns a new `ErrorDirectiveBuilder` to construct an `ErrorDirective` with the
+    /// given message string slice using the builder pattern.
     pub fn new_with_str(message: &str) -> Self {
         Self::new(message.to_string())
     }
 
+    /// Consumes the builder and returns an `ErrorDirective` containing the error message.
     pub fn build(self) -> ErrorDirective {
         ErrorDirective {
             message: self.message,
@@ -146,12 +200,25 @@ impl ErrorDirectiveBuilder {
     }
 }
 
+/// Represents a `pragma` preprocessor directive in C.
+///
+/// # Examples
+/// ```c
+/// #pragma once // or something else
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct PragmaDirective {
+    /// The token that represents a specific instruction or action for the compiler.
     pub raw: String,
 }
 
 impl PragmaDirective {
+    /// Creates and returns a new `PragmaDirectiveBuilder` to construct a `PragmaDirective` using
+    /// the builder pattern.
+    /// ```rust
+    /// let pragma = PragmaDirective::new(/*raw token*/)
+    ///     .build();
+    /// ```
     pub fn new(raw: String) -> PragmaDirectiveBuilder {
         PragmaDirectiveBuilder::new(raw)
     }
@@ -163,27 +230,41 @@ impl Format for PragmaDirective {
     }
 }
 
+/// A builder for constructing a `PragmaDirective` instance.
 pub struct PragmaDirectiveBuilder {
-    pub raw: String,
+    raw: String,
 }
 
 impl PragmaDirectiveBuilder {
+    /// Creates and returns a new `PragmaDirectiveBuilder` to construct a `PragmaDirective` using
+    /// the builder pattern.
+    /// ```rust
+    /// let pragma = PragmaDirectiveBuilder::new(/*raw token*/)
+    ///     .build();
+    /// ```
     pub fn new(raw: String) -> Self {
         Self { raw }
     }
 
+    /// Creates and returns a new `PragmaDirectiveBuilder` to construct a `PragmaDirective` with
+    /// the given raw token string slice using the builder pattern.
     pub fn new_with_str(raw: &str) -> Self {
         Self::new(raw.to_string())
     }
 
+    /// Consumes the builder and returns a `PragmaDirective` containing the raw token string.
     pub fn build(self) -> PragmaDirective {
         PragmaDirective { raw: self.raw }
     }
 }
 
+/// Represents a macro definition in C.
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub enum Macro {
+    /// Definition of an object macro.
     Obj(ObjMacro),
+
+    /// Definition of a function-like macro.
     Func(FuncMacro),
 }
 
@@ -197,14 +278,32 @@ impl Format for Macro {
     }
 }
 
+/// Represents an object macro in C.
+///
+/// # Examples
+/// ```c
+/// #define SOMETHING 123
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct ObjMacro {
+    /// The name of the macro.
     pub name: String,
+
+    /// The predefined value or code fragment.
     pub value: Option<String>,
+
+    /// The optional doc comment for the macro.
     pub doc: Option<DocComment>,
 }
 
 impl ObjMacro {
+    /// Creates and returns a new `ObjMacroBuilder` to construct an `ObjMacro` using the builder
+    /// pattern.
+    /// ```rust
+    /// let obj_macro = ObjMacro::new(/*name of the macro*/)
+    ///     .value(/*predefined value*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String) -> ObjMacroBuilder {
         ObjMacroBuilder::new(name)
     }
@@ -244,6 +343,7 @@ impl Format for ObjMacro {
     }
 }
 
+/// A builder for constructing an `ObjMacro` instance.
 pub struct ObjMacroBuilder {
     name: String,
     value: Option<String>,
@@ -251,6 +351,13 @@ pub struct ObjMacroBuilder {
 }
 
 impl ObjMacroBuilder {
+    /// Creates and returns a new `ObjMacroBuilder` to construct an `ObjMacro` using the builder
+    /// pattern.
+    /// ```rust
+    /// let obj_macro = ObjMacroBuilder::new(/*name of the macro*/)
+    ///     .value(/*predefined value*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String) -> Self {
         Self {
             name,
@@ -259,24 +366,32 @@ impl ObjMacroBuilder {
         }
     }
 
+    /// Creates and returns a new `ObjMacroBuilder` to construct an `ObjMacro` with the given name
+    /// string slice using the builder pattern.
     pub fn new_with_str(name: &str) -> Self {
         Self::new(name.to_string())
     }
 
+    /// Sets the optional doc comment for the macro and returns the builder for more chaining.
     pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
 
+    /// Sets the predefined value or code fragment for the macro and returns the builder for more
+    /// chaining.
     pub fn value(mut self, value: String) -> Self {
         self.value = Some(value);
         self
     }
 
+    /// Sets the predefined value or code fragment for the macro with the given value string slice
+    /// and returns the builder for more chaining.
     pub fn value_with_str(self, value: &str) -> Self {
         self.value(value.to_string())
     }
 
+    /// Consumes the builder and returns an `ObjMacro` containing the name and the value for it.
     pub fn build(self) -> ObjMacro {
         ObjMacro {
             name: self.name,
@@ -286,15 +401,36 @@ impl ObjMacroBuilder {
     }
 }
 
+/// Represents a function-like macro in C.
+///
+/// # Examples
+/// ```c
+/// #define MUL(x, y) (x) * (y)
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct FuncMacro {
+    /// The name of the macro.
     pub name: String,
-    pub args: Vec<String>,
+
+    /// The parameters of the macro.
+    pub params: Vec<String>,
+
+    /// The body of the function-like macro.
     pub value: String,
+
+    /// The optional doc comment for the macro.
     pub doc: Option<DocComment>,
 }
 
 impl FuncMacro {
+    /// Creates and returns a new `FuncMacroBuilder` to construct a `FuncMacro` using the builder
+    /// pattern.
+    /// ```rust
+    /// let func_macro = FuncMacro::new(/*name of the macro*/)
+    ///     .params(/*parameteres*/)
+    ///     .value(/*the body of the macro*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String) -> FuncMacroBuilder {
         FuncMacroBuilder::new(name)
     }
@@ -308,11 +444,11 @@ impl Format for FuncMacro {
 
         write!(fmt, "#define {}(", self.name)?;
 
-        for arg in &self.args[..self.args.len() - 1] {
-            write!(fmt, "{arg}, ")?;
+        for param in &self.params[..self.params.len() - 1] {
+            write!(fmt, "{param}, ")?;
         }
 
-        if let Some(last) = self.args.last() {
+        if let Some(last) = self.params.last() {
             write!(fmt, "{last}")?;
         }
 
@@ -340,69 +476,94 @@ impl Format for FuncMacro {
     }
 }
 
+/// A builder for constructing a `FuncMacro` instance.
 pub struct FuncMacroBuilder {
     name: String,
-    args: Vec<String>,
+    params: Vec<String>,
     value: String,
     doc: Option<DocComment>,
 }
 
 impl FuncMacroBuilder {
+    /// Creates and returns a new `FuncMacroBuilder` to construct a `FuncMacro` using the builder
+    /// pattern.
+    /// ```rust
+    /// let func_macro = FuncMacro::new(/*name of the macro*/)
+    ///     .params(/*parameters*/)
+    ///     .value(/*the body of the macro*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String) -> Self {
         Self {
             name,
-            args: vec![],
+            params: vec![],
             value: "".to_string(),
             doc: None,
         }
     }
 
+    /// Creates and returns a new `FuncMacroBuilder` to construct a `FuncMacro` with the given name
+    /// string slice using the builder pattern.
     pub fn new_with_str(name: &str) -> Self {
         Self::new(name.to_string())
     }
 
+    /// Sets the optional doc comment for the macro.
     pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
 
-    pub fn arg(mut self, arg: String) -> Self {
-        self.args.push(arg);
+    /// Appends a parameter to the function-like macro being built and returns the builder for more
+    /// chaining.
+    pub fn param(mut self, param: String) -> Self {
+        self.params.push(param);
         self
     }
 
-    pub fn arg_with_str(self, arg: &str) -> Self {
-        self.arg(arg.to_string())
+    /// Appends a parameter to the function-like macro being built with the given param string
+    /// slice and returns the builder for more chaining.
+    pub fn param_with_str(self, param: &str) -> Self {
+        self.param(param.to_string())
     }
 
-    pub fn args(mut self, args: Vec<String>) -> Self {
-        self.args = args;
+    /// Sets the parameters of the function-like macro and returns the builder for more chaining.
+    pub fn params(mut self, params: Vec<String>) -> Self {
+        self.params = params;
         self
     }
 
+    /// Appends a variadic argument symbol to the parameter list of the macro and returns the
+    /// builder for more chaining.
     pub fn variadic_arg(self) -> Self {
-        self.arg_with_str("...")
+        self.param_with_str("...")
     }
 
+    /// Sets the body of the macro and returns the builder for more chaining.
     pub fn value(mut self, value: String) -> Self {
         self.value = value;
         self
     }
 
+    /// Sets the body of the macro with the given string slice and returns the builder for more
+    /// chaining.
     pub fn value_with_str(self, value: &str) -> Self {
         self.value(value.to_string())
     }
 
+    /// Consumes the builder and returns a `FuncMacro` containing the name, parameters, and the
+    /// body.
     pub fn build(self) -> FuncMacro {
         FuncMacro {
             name: self.name,
-            args: self.args,
+            params: self.params,
             value: self.value,
             doc: self.doc,
         }
     }
 }
 
+/// Either a `Scope` or a `Block`.
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub enum ScopeOrBlock {
     Scope(Scope),
@@ -418,14 +579,37 @@ impl Format for ScopeOrBlock {
     }
 }
 
+/// Represents the `if` preprocessor directive in C.
+///
+/// # Examples
+/// ```c
+/// #if cond
+///   // then body
+/// #else
+///   // other body
+/// #endif
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct IfDirective {
+    /// The condition for the then block.
     pub cond: String,
+
+    /// The then body.
     pub then: ScopeOrBlock,
+
+    /// The optional else block.
     pub other: Option<ScopeOrBlock>,
 }
 
 impl IfDirective {
+    /// Creates and returns a new `IfDirectiveBuilder` to construct a `IfDirective` using the
+    /// builder pattern.
+    /// ```rust
+    /// let if_dir = IfDirective::new(/*cond*/)
+    ///     .then(/*then block*/)
+    ///     .other(/*else block*/)
+    ///     .build();
+    /// ```
     pub fn new(cond: String) -> IfDirectiveBuilder {
         IfDirectiveBuilder::new(cond)
     }
@@ -445,6 +629,7 @@ impl Format for IfDirective {
     }
 }
 
+/// A builder for constructing a `IfDirective` instance.
 pub struct IfDirectiveBuilder {
     cond: String,
     then: ScopeOrBlock,
@@ -452,6 +637,14 @@ pub struct IfDirectiveBuilder {
 }
 
 impl IfDirectiveBuilder {
+    /// Creates and returns a new `IfDirectiveBuilder` to construct a `IfDirective` using the
+    /// builder pattern.
+    /// ```rust
+    /// let if_dir = IfDirectiveBuilder::new(/*cond*/)
+    ///     .then(/*then block*/)
+    ///     .other(/*else block*/)
+    ///     .build();
+    /// ```
     pub fn new(cond: String) -> Self {
         Self {
             cond,
@@ -460,10 +653,13 @@ impl IfDirectiveBuilder {
         }
     }
 
+    /// Creates and returns a new `IfDirectiveBuilder` to construct a `IfDirective` with the given
+    /// condition string slice using the builder pattern.
     pub fn new_with_str(cond: &str) -> Self {
         Self::new(cond.to_string())
     }
 
+    /// Appends a global statement to the then body and returns the builder for more chaining.
     pub fn global_statement(mut self, global_stmt: GlobalStatement) -> Self {
         match &mut self.then {
             ScopeOrBlock::Scope(then) => {
@@ -476,6 +672,7 @@ impl IfDirectiveBuilder {
         }
     }
 
+    /// Appends a block statement to the then body and returns the builder for more chaining.
     pub fn block_statement(mut self, stmt: Statement) -> Self {
         match &mut self.then {
             ScopeOrBlock::Block(then) => {
@@ -488,16 +685,20 @@ impl IfDirectiveBuilder {
         }
     }
 
+    /// Sets the then body and returns the builder for more chaining.
     pub fn then(mut self, then: ScopeOrBlock) -> Self {
         self.then = then;
         self
     }
 
+    /// Sets the optional else body and returns the builder for more chaining.
     pub fn other(mut self, other: ScopeOrBlock) -> Self {
         self.other = Some(other);
         self
     }
 
+    /// Consumes the builder and returns a `IfDirective` containing the condition, then body,
+    /// optional else body.
     pub fn build(self) -> IfDirective {
         IfDirective {
             cond: self.cond,
@@ -507,15 +708,40 @@ impl IfDirectiveBuilder {
     }
 }
 
+/// Represents the `ifdef` and `ifndef` preprocessor directives in C.
+///
+/// # Examples
+/// ```c
+/// #ifdef SOME_MACRO
+///   // then body
+/// #else
+///   // else body
+/// #endif
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct IfDefDirective {
+    /// The symbol to be checked.
     pub symbol: String,
+
+    /// The then body
     pub then: ScopeOrBlock,
+
+    /// The optional else body.
     pub other: Option<ScopeOrBlock>,
+
+    /// Whether it's `ifndef` or `ifdef`.
     pub not: bool,
 }
 
 impl IfDefDirective {
+    /// Creates and returns a new `IfDefDirectiveBuilder` to construct an `IfDefDirective` using
+    /// the builder pattern.
+    /// ```rust
+    /// let ifdef = IfDefDirective::new(/*symbol*/)
+    ///     .then(/*then body*/)
+    ///     .other(/*else body*/)
+    ///     .build();
+    /// ```
     pub fn new(symbol: String) -> IfDefDirectiveBuilder {
         IfDefDirectiveBuilder::new(symbol)
     }
@@ -539,6 +765,7 @@ impl Format for IfDefDirective {
     }
 }
 
+/// A builder for constructing an `IfDefDirective` instance.
 pub struct IfDefDirectiveBuilder {
     symbol: String,
     then: ScopeOrBlock,
@@ -547,6 +774,14 @@ pub struct IfDefDirectiveBuilder {
 }
 
 impl IfDefDirectiveBuilder {
+    /// Creates and returns a new `IfDefDirectiveBuilder` to construct an `IfDefDirective` using
+    /// the builder pattern.
+    /// ```rust
+    /// let ifdef = IfDefDirectiveBuilder::new(/*symbol*/)
+    ///     .then(/*then body*/)
+    ///     .other(/*else body*/)
+    ///     .build();
+    /// ```
     pub fn new(symbol: String) -> Self {
         Self {
             symbol,
@@ -556,10 +791,13 @@ impl IfDefDirectiveBuilder {
         }
     }
 
+    /// Creates and returns a new `IfDefDirectiveBuilder` to construct an `IfDefDirective` with the
+    /// given symbol string slice using the builder pattern.
     pub fn new_with_str(symbol: &str) -> Self {
         Self::new(symbol.to_string())
     }
 
+    /// Appends a global statement to the then body and returns the builder for more chaining.
     pub fn global_statement(mut self, global_stmt: GlobalStatement) -> Self {
         match &mut self.then {
             ScopeOrBlock::Scope(then) => {
@@ -572,6 +810,7 @@ impl IfDefDirectiveBuilder {
         }
     }
 
+    /// Appends a block statement to the then body and returns the builder for more chaining.
     pub fn block_statement(mut self, stmt: Statement) -> Self {
         match &mut self.then {
             ScopeOrBlock::Block(then) => {
@@ -584,21 +823,26 @@ impl IfDefDirectiveBuilder {
         }
     }
 
+    /// Sets the then body and returns the builder for more chaining.
     pub fn then(mut self, then: ScopeOrBlock) -> Self {
         self.then = then;
         self
     }
 
+    /// Sets the optional else body and returns the builder for more chaining.
     pub fn other(mut self, other: ScopeOrBlock) -> Self {
         self.other = Some(other);
         self
     }
 
+    /// Makes it `ifndef` and returns the builder for more chaining.
     pub fn not(mut self) -> Self {
         self.not = true;
         self
     }
 
+    /// Consumes the builder and returns an `IfDefDirective` containing the symbol to be checked,
+    /// then body, and other body.
     pub fn build(self) -> IfDefDirective {
         IfDefDirective {
             symbol: self.symbol,
@@ -609,15 +853,34 @@ impl IfDefDirectiveBuilder {
     }
 }
 
+/// Represents the `line` preprocessor directive in C.
+///
+/// # Examples
+/// ```c
+/// #line 10 "header_file"
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct LineDirective {
+    /// The line number.
     pub line: u64,
+
+    /// The path to the header file.
     pub path: String,
+
+    /// Whether this is a system import.
     pub is_system: bool,
+
+    /// The optional doc comment for the directive.
     pub doc: Option<DocComment>,
 }
 
 impl LineDirective {
+    /// Creates and returns a new `LineDirectiveBuilder` to construct a `LineDirective` using the
+    /// builder pattern.
+    /// ```rust
+    /// let line = LineDirective::new(/*line number*/, /*path to header file*/)
+    ///     .build();
+    /// ```
     pub fn new(line: u64, path: String) -> LineDirectiveBuilder {
         LineDirectiveBuilder::new(line, path)
     }
@@ -641,6 +904,7 @@ impl Format for LineDirective {
     }
 }
 
+/// A builder for constructing a `LineDirective` instance.
 pub struct LineDirectiveBuilder {
     line: u64,
     path: String,
@@ -649,6 +913,12 @@ pub struct LineDirectiveBuilder {
 }
 
 impl LineDirectiveBuilder {
+    /// Creates and returns a new `LineDirectiveBuilder` to construct a `LineDirective` using the
+    /// builder pattern.
+    /// ```rust
+    /// let line = LineDirective::new(/*line number*/, /*path to header file*/)
+    ///     .build();
+    /// ```
     pub fn new(line: u64, path: String) -> Self {
         Self {
             line,
@@ -658,20 +928,26 @@ impl LineDirectiveBuilder {
         }
     }
 
+    /// Creates and returns a new `LineDirectiveBuilder` to construct a `LineDirective` with the
+    /// given path string slice using the builder pattern
     pub fn new_with_str(line: u64, path: &str) -> Self {
         Self::new(line, path.to_string())
     }
 
+    /// Sets the optional doc comment for this directive.
     pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
 
+    /// Makes this a system import.
     pub fn system(mut self) -> Self {
         self.is_system = true;
         self
     }
 
+    /// Consumes the buidler and returns a `LineDirective` containing the line number, and path to
+    /// the header file.
     pub fn build(self) -> LineDirective {
         LineDirective {
             line: self.line,
@@ -682,12 +958,25 @@ impl LineDirectiveBuilder {
     }
 }
 
+/// Represents the `warning` preprocessor directive in C.
+///
+/// # Examples
+/// ```c
+/// #warning "warning message"
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct WarningDirective {
+    /// The warning message.
     pub message: String,
 }
 
 impl WarningDirective {
+    /// Creates and returns a new `WarningDirectiveBuilder` to construct a `WarningDirective` using
+    /// the builder pattern.
+    /// ```rust
+    /// let warning = WarningDirective::new(/*warning message*/)
+    ///     .build();
+    /// ```
     pub fn new(message: String) -> WarningDirectiveBuilder {
         WarningDirectiveBuilder::new(message)
     }
@@ -699,19 +988,29 @@ impl Format for WarningDirective {
     }
 }
 
+/// A builder for constructing a `WarningDirective` instance.
 pub struct WarningDirectiveBuilder {
     message: String,
 }
 
 impl WarningDirectiveBuilder {
+    /// Creates and returns a new `WarningDirectiveBuilder` to construct a `WarningDirective` using
+    /// the builder pattern.
+    /// ```rust
+    /// let warning = WarningDirective::new(/*warning message*/)
+    ///     .build();
+    /// ```
     pub fn new(message: String) -> Self {
         Self { message }
     }
 
+    /// Creates and returns a new `WarningDirectiveBuilder` to construct a `WarningDirective` with
+    /// the given message string slice using the builder pattern.
     pub fn new_with_str(message: &str) -> Self {
         Self::new(message.to_string())
     }
 
+    /// Consumes the builder and returns a `WarningDirective` containing the warning message.
     pub fn build(self) -> WarningDirective {
         WarningDirective {
             message: self.message,
@@ -768,8 +1067,8 @@ mod tests {
 
         let func_m = Macro::Func(
             FuncMacroBuilder::new_with_str("AREA")
-                .arg_with_str("width")
-                .arg_with_str("height")
+                .param_with_str("width")
+                .param_with_str("height")
                 .value_with_str("(width) * (height)")
                 .build(),
         );
@@ -778,9 +1077,9 @@ mod tests {
 
         let func_m2 = Macro::Func(
             FuncMacroBuilder::new_with_str("SOMETHING")
-                .arg_with_str("a")
-                .arg_with_str("b")
-                .arg_with_str("c")
+                .param_with_str("a")
+                .param_with_str("b")
+                .param_with_str("c")
                 .value_with_str("abc\nabc\nanother")
                 .build(),
         );

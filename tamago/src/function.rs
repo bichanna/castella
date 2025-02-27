@@ -26,6 +26,8 @@ use crate::{Block, DocComment, Format, Formatter, Statement, Type};
 use tamacro::DisplayFromFormat;
 
 /// Represents a C function
+///
+/// # Examples
 /// ```c
 /// int main(void) {
 ///   return 0;
@@ -59,6 +61,14 @@ pub struct Function {
 }
 
 impl Function {
+    /// Creates and returns a new `FunctionBuilder` to construct a `Function` using the builder
+    /// pattern.
+    /// ```rust
+    /// let func = Function::new(/*name of the function*/, /*return type of the function*/)
+    ///     .params(/*parameters of the function*/)
+    ///     .body(/*function body*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String, ret: Type) -> FunctionBuilder {
         FunctionBuilder::new(name, ret)
     }
@@ -209,7 +219,7 @@ impl FunctionBuilder {
         self
     }
 
-    /// COnsumes the builder and returns a `Function` containing the name, return type, parameters,
+    /// Consumes the builder and returns a `Function` containing the name, return type, parameters,
     /// and body of the function.
     pub fn build(self) -> Function {
         Function {
@@ -306,7 +316,7 @@ mod tests {
             .body(
                 Block::new()
                     .statement(Statement::Return(Some(Expr::Binary {
-                        left: Box::new(Expr::ConstDouble(1.23)),
+                        left: Box::new(Expr::Double(1.23)),
                         op: BinOp::Add,
                         right: Box::new(Expr::Ident("val".to_string())),
                     })))

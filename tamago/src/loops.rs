@@ -25,13 +25,30 @@ use std::fmt::{self, Write};
 use crate::{Block, Expr, Format, Formatter, Statement};
 use tamacro::DisplayFromFormat;
 
+/// Represents a while loop in C.
+///
+/// # Examples
+/// ```c
+/// while (cond) {
+///   // body
+/// }
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct While {
+    /// The condition of the while loop.
     pub cond: Expr,
+
+    /// The body of the while loop.
     pub body: Block,
 }
 
 impl While {
+    /// Creates and returns a new `WhileBuilder` to construct a `While` using the builder pattern.
+    /// ```rust
+    /// let while_loop = While::new(/*cond*/)
+    ///     .body(/*loop body*/)
+    ///     .build();
+    /// ```
     pub fn new(cond: Expr) -> WhileBuilder {
         WhileBuilder::new(cond)
     }
@@ -48,12 +65,19 @@ impl Format for While {
     }
 }
 
+/// A builder constructing a `While` instance.
 pub struct WhileBuilder {
     cond: Expr,
     body: Block,
 }
 
 impl WhileBuilder {
+    /// Creates and returns a new `WhileBuilder` to construct a `While` using the builder pattern.
+    /// ```rust
+    /// let while_loop = WhileBuilder::new(/*cond*/)
+    ///     .body(/*loop body*/)
+    ///     .build();
+    /// ```
     pub fn new(cond: Expr) -> Self {
         Self {
             cond,
@@ -61,16 +85,21 @@ impl WhileBuilder {
         }
     }
 
+    /// Sets the body block of the while loop being built and returns the builder for more
+    /// chaining.
     pub fn body(mut self, body: Block) -> Self {
         self.body = body;
         self
     }
 
+    /// Appends a statement to the body block and returns the builder for chaining more operations.
     pub fn statement(mut self, stmt: Statement) -> Self {
         self.body.stmts.push(stmt);
         self
     }
 
+    /// Consumes the builder and returns a `While` containing the condition expression and the body
+    /// block.
     pub fn build(self) -> While {
         While {
             cond: self.cond,
@@ -79,6 +108,14 @@ impl WhileBuilder {
     }
 }
 
+/// Represents a do-while expression in C.
+///
+/// # Examples
+/// ```c
+/// do {
+///   // do-while body block
+/// } while(cond);
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct DoWhile {
     pub cond: Expr,
@@ -86,6 +123,13 @@ pub struct DoWhile {
 }
 
 impl DoWhile {
+    /// Creates and returns a new `DoWhileBuilder` to construct a `DoWhile` using the builder
+    /// pattern.
+    /// ```rust
+    /// let do_while = DoWhile::new(/*cond*/)
+    ///     .body(/*body block of the do-while loop*/)
+    ///     .build();
+    /// ```
     pub fn new(cond: Expr) -> DoWhileBuilder {
         DoWhileBuilder::new(cond)
     }
@@ -102,12 +146,20 @@ impl Format for DoWhile {
     }
 }
 
+/// A builder for construcing a `DoWhile` instance.
 pub struct DoWhileBuilder {
     cond: Expr,
     body: Block,
 }
 
 impl DoWhileBuilder {
+    /// Creates and returns a new `DoWhileBuilder` to construct a `DoWhile` using the builder
+    /// pattern.
+    /// ```rust
+    /// let do_while = DoWhileBuilder::new(/*cond*/)
+    ///     .body(/*body block of the do-while loop*/)
+    ///     .build();
+    /// ```
     pub fn new(cond: Expr) -> Self {
         Self {
             cond,
@@ -115,16 +167,21 @@ impl DoWhileBuilder {
         }
     }
 
+    /// Sets the body block of the do-while being built and returns the builder for chaining more
+    /// operations.
     pub fn body(mut self, body: Block) -> Self {
         self.body = body;
         self
     }
 
+    /// Appends a statement to the body block and returns the builder for chaining more operations.
     pub fn statement(mut self, stmt: Statement) -> Self {
         self.body.stmts.push(stmt);
         self
     }
 
+    /// Consumes the builder and returns a `DoWhile` containg the condition expression and the body
+    /// block.
     pub fn build(self) -> DoWhile {
         DoWhile {
             cond: self.cond,
@@ -133,15 +190,39 @@ impl DoWhileBuilder {
     }
 }
 
+/// Represents a for loop in C.
+///
+/// # Examples
+/// ```c
+/// for (init; cond; step) {
+///   // for body block
+/// }
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct For {
+    /// The initialization part of the for loop.
     pub init: Option<Expr>,
+
+    /// The condition part of the for loop.
     pub cond: Option<Expr>,
+
+    /// The step part of the for loop.
     pub step: Option<Expr>,
+
+    /// The body block of the for loop.
     pub body: Block,
 }
 
 impl For {
+    /// Creates and returns a new `ForBuilder` to construct a `For` using the builder pattern.
+    /// ```rust
+    /// let for_loop = For::new()
+    ///     .init(/*init part*/)
+    ///     .cond(/*cond part*/)
+    ///     .step(/*step part*/)
+    ///     .body(/*body block of the for loop*/)
+    ///     .build();
+    /// ```
     pub fn new() -> ForBuilder {
         ForBuilder::new()
     }
@@ -172,6 +253,7 @@ impl Format for For {
     }
 }
 
+/// A builder for construcing a `For` instance.
 pub struct ForBuilder {
     init: Option<Expr>,
     cond: Option<Expr>,
@@ -180,6 +262,15 @@ pub struct ForBuilder {
 }
 
 impl ForBuilder {
+    /// Creates and returns a new `ForBuilder` to construct a `For` using the builder pattern.
+    /// ```rust
+    /// let for_loop = ForBuilder::new()
+    ///     .init(/*init part*/)
+    ///     .cond(/*cond part*/)
+    ///     .step(/*step part*/)
+    ///     .body(/*body block of the for loop*/)
+    ///     .build();
+    /// ```
     pub fn new() -> Self {
         Self {
             init: None,
@@ -189,31 +280,43 @@ impl ForBuilder {
         }
     }
 
+    /// Sets the initialization part of the for loop being built and returns the builder for more
+    /// chaining.
     pub fn init(mut self, init: Expr) -> Self {
         self.init = Some(init);
         self
     }
 
+    /// Sets the condition part of the for loop being built and returns the builder for more
+    /// chaining.
     pub fn cond(mut self, cond: Expr) -> Self {
         self.cond = Some(cond);
         self
     }
 
+    /// Sets the step part of the for loop being built and returns the builder for chaining more
+    /// operations.
     pub fn step(mut self, step: Expr) -> Self {
         self.step = Some(step);
         self
     }
 
+    /// Sets the body block of the for loop being built and returns the builder for chaining more
+    /// operations.
     pub fn body(mut self, body: Block) -> Self {
         self.body = body;
         self
     }
 
+    /// Appends a statement to the body block of the for loop being built and returns the builder
+    /// for more chaining.
     pub fn statement(mut self, stmt: Statement) -> Self {
         self.body.stmts.push(stmt);
         self
     }
 
+    /// Consumes the builder and returns a `For` containing the optional init, cond, and step
+    /// parts, and the body block.
     pub fn build(self) -> For {
         For {
             init: self.init,
@@ -231,10 +334,10 @@ mod tests {
 
     #[test]
     fn while_stmt() {
-        let w = WhileBuilder::new(Expr::ConstBool(true))
+        let w = WhileBuilder::new(Expr::Bool(true))
             .body(
                 Block::new()
-                    .statement(Statement::Return(Some(Expr::ConstFloat(1.23))))
+                    .statement(Statement::Return(Some(Expr::Float(1.23))))
                     .build(),
             )
             .build();
@@ -247,7 +350,7 @@ mod tests {
 
     #[test]
     fn do_while() {
-        let w = DoWhileBuilder::new(Expr::ConstBool(true)).build();
+        let w = DoWhileBuilder::new(Expr::Bool(true)).build();
         let res = "do {\n} while (true);\n";
         assert_eq!(w.to_string(), res);
     }
@@ -257,13 +360,13 @@ mod tests {
         let f = ForBuilder::new()
             .init(Expr::Variable(Box::new(
                 VariableBuilder::new_with_str("i", Type::new(BaseType::Int).build())
-                    .value(Expr::ConstInt(0))
+                    .value(Expr::Int(0))
                     .build(),
             )))
             .cond(Expr::Binary {
                 left: Box::new(Expr::Ident("i".to_string())),
                 op: BinOp::LT,
-                right: Box::new(Expr::ConstInt(10)),
+                right: Box::new(Expr::Int(10)),
             })
             .step(Expr::Unary {
                 op: UnaryOp::Inc,

@@ -39,8 +39,10 @@ use tamacro::DisplayFromFormat;
 pub struct If {
     /// The condition of the if statement
     pub cond: Expr,
+
     /// The then block of the if statement
     pub then: Block,
+
     /// Optional else block of the if statement
     pub other: Option<Block>,
 }

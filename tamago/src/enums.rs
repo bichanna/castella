@@ -38,8 +38,13 @@ use tamacro::DisplayFromFormat;
 /// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Enum {
+    /// The name of the enum
     pub name: String,
+
+    /// The enum variants
     pub variants: Vec<Variant>,
+
+    /// The doc comment of the enum
     pub doc: Option<DocComment>,
 }
 
