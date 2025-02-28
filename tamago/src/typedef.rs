@@ -25,17 +25,33 @@ use std::fmt::{self, Write};
 use crate::{BaseType, Format, Formatter, Type};
 use tamacro::DisplayFromFormat;
 
+/// Represents a `typedef` in C.
+///
+/// # Examples
+/// ```c
+/// typedef struct Person Person;
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct TypeDef {
+    /// The type to be aliased.
     pub t: Type,
+
+    /// The name of the new type alias.
     pub name: String,
 }
 
 impl TypeDef {
+    /// Creates and returns a new `TypeDefBuilder` to construct a `TypeDef` using the builder
+    /// pattern.
+    /// ```rust
+    /// let typedef = TypeDef::new(/*name of the typedef*/)
+    ///     .build();
+    /// ```
     pub fn new(t: Type, name: String) -> TypeDefBuilder {
         TypeDefBuilder::new(t, name)
     }
 
+    /// Returns the type of the typedef.
     pub fn to_type(&self) -> Type {
         Type::new(BaseType::TypeDef(self.name.clone())).build()
     }
@@ -49,20 +65,30 @@ impl Format for TypeDef {
     }
 }
 
+/// A builder for constructing a `TypeDef` instance.
 pub struct TypeDefBuilder {
     t: Type,
     name: String,
 }
 
 impl TypeDefBuilder {
+    /// Creates and returns a new `TypeDefBuilder` to construct a `TypeDef` using the builder
+    /// pattern.
+    /// ```rust
+    /// let typedef = TypeDef::new(/*name of the typedef*/)
+    ///     .build();
+    /// ```
     pub fn new(t: Type, name: String) -> Self {
         Self { t, name }
     }
 
+    /// Creates and returns a new `TypeDefBuilder` to construct a `TypeDef` with the given name
+    /// string slice using the builder pattern.
     pub fn new_with_str(t: Type, name: &str) -> Self {
         Self::new(t, name.to_string())
     }
 
+    /// Consumes the builder and returns a `TypeDef` containing all the information.
     pub fn build(self) -> TypeDef {
         TypeDef {
             t: self.t,

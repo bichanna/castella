@@ -26,13 +26,33 @@ use std::fmt::{self, Write};
 use crate::*;
 use tamacro::DisplayFromFormat;
 
+/// Represents a global scope in C.
+///
+/// # Examples
+/// ```c
+/// int number = 0;
+///
+/// int main(void) {
+///   // body block
+/// }
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Scope {
+    /// The optional doc comment.
     pub doc: Option<DocComment>,
+
+    /// The global statements in the scope.
     pub global_stmts: Vec<GlobalStatement>,
 }
 
 impl Scope {
+    /// Creates and returns a new `ScopeBuilder` to construct a `Scope` using the builder pattern.
+    /// ```rust
+    /// let scope = Scope::new()
+    ///     .global_statement(/*global statement*/)
+    ///     .new_line()
+    ///     .build();
+    /// ```
     pub fn new() -> ScopeBuilder {
         ScopeBuilder::new()
     }
@@ -52,12 +72,20 @@ impl Format for Scope {
     }
 }
 
+/// A builder for constructing a `Scope` instance.
 pub struct ScopeBuilder {
     doc: Option<DocComment>,
     global_stmts: Vec<GlobalStatement>,
 }
 
 impl ScopeBuilder {
+    /// Creates and returns a new `ScopeBuilder` to construct a `Scope` using the builder pattern.
+    /// ```rust
+    /// let scope = ScopeBuilder::new()
+    ///     .global_statement(/*global statement*/)
+    ///     .new_line()
+    ///     .build();
+    /// ```
     pub fn new() -> Self {
         Self {
             doc: None,
@@ -65,25 +93,30 @@ impl ScopeBuilder {
         }
     }
 
+    /// Sets the doc cocmment for the scope being built and returns the builder for more chaining.
     pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
 
+    /// Sets the global statements of the scope and returns the builder for more chaining.
     pub fn global_statements(mut self, global_stmts: Vec<GlobalStatement>) -> Self {
         self.global_stmts = global_stmts;
         self
     }
 
+    /// Appends a global statement to the scope and returns the builder for more chaining.
     pub fn global_statement(mut self, global_stmt: GlobalStatement) -> Self {
         self.global_stmts.push(global_stmt);
         self
     }
 
+    /// Appends a new line to the scope and returns the builder for more chaining.
     pub fn new_line(self) -> Self {
         self.global_statement(GlobalStatement::NewLine)
     }
 
+    /// Consumes the builder and returns a `Scope` containing all the global statements.
     pub fn build(self) -> Scope {
         Scope {
             doc: self.doc,
@@ -92,24 +125,67 @@ impl ScopeBuilder {
     }
 }
 
+/// Represents a global statement in C.
+///
+/// # Examples
+/// ```c
+/// int number = 0;
+/// struct Person {
+///   char* name;
+///   int age;
+/// }
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub enum GlobalStatement {
+    /// A comment
     Comment(Comment),
+
+    /// An enum definition.
     Enum(Enum),
+
+    /// A struct definition.
     Struct(Struct),
+
+    /// A function declaration/definition.
     Function(Function),
+
+    /// A union definition.
     Union(Union),
+
+    /// A variable declaration/definition.
     Variable(Variable),
+
+    /// A typedef statement.
     TypeDef(TypeDef),
+
+    /// An error preprocessor directive.
     ErrorDirective(ErrorDirective),
+
+    /// An ifdef preprocessor directive.
     IfDefDirective(IfDefDirective),
+
+    /// An if preprocessor directive.
     IfDirective(IfDirective),
+
+    /// An include preprocessor directive.
     Include(Include),
+
+    /// A line preprocessor directive.
     LineDirective(LineDirective),
+
+    /// Macro definition.
     Macro(Macro),
+
+    /// A pragram preprocessor directive.
     PragmaDirective(PragmaDirective),
+
+    /// A warning preprocessor directive.
     WarningDirective(WarningDirective),
+
+    /// A raw piece of code.
     Raw(String),
+
+    /// A new line.
     NewLine,
 }
 

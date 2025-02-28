@@ -26,6 +26,15 @@ use std::fmt::{self, Write};
 use crate::{BaseType, DocComment, Format, Formatter, Type};
 use tamacro::DisplayFromFormat;
 
+/// Represents a struct in C.
+///
+/// # Examples
+/// ```c
+/// struct Person {
+///   char* name;
+///   int age;
+/// }
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Struct {
     /// The name of the struct
@@ -39,10 +48,18 @@ pub struct Struct {
 }
 
 impl Struct {
+    /// Creates and returns a new `StructBuilder` to construct a `Struct` using the builder
+    /// pattern.
+    /// ```rust
+    /// let s = Struct::new(/*name of the struct*/)
+    ///     .field(/*struct field*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String) -> StructBuilder {
         StructBuilder::new(name)
     }
 
+    /// Returns the type of the struct.
     pub fn to_type(&self) -> Type {
         Type::new(BaseType::Struct(self.name.clone())).build()
     }
@@ -69,6 +86,7 @@ impl Format for Struct {
     }
 }
 
+/// A builder for constructing a `Struct` instance.
 pub struct StructBuilder {
     name: String,
     fields: Vec<Field>,
@@ -76,6 +94,13 @@ pub struct StructBuilder {
 }
 
 impl StructBuilder {
+    /// Creates and returns a new `StructBuilder` to construct a `Struct` using the builder
+    /// pattern.
+    /// ```rust
+    /// let s = StructBuilder::new(/*name of the struct*/)
+    ///     .field(/*struct field*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String) -> Self {
         Self {
             name,
@@ -84,25 +109,31 @@ impl StructBuilder {
         }
     }
 
+    /// Creates and returns a new `StructBuilder` construct a `Struct` with the given name string
+    /// slice using the builder pattern.
     pub fn new_with_str(name: &str) -> Self {
         Self::new(name.to_string())
     }
 
+    /// Sets the optional doc comment for the struct and returns the builder for more chaining.
     pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
 
+    /// Appends a struct field to the struct being built and returns the builder for more chaining.
     pub fn field(mut self, field: Field) -> Self {
         self.fields.push(field);
         self
     }
 
+    /// Sets the struct fields of the struct being built and returns the builder for more chaining.
     pub fn fields(mut self, fields: Vec<Field>) -> Self {
         self.fields = fields;
         self
     }
 
+    /// Consumes the builder and returns a `Struct` containing all the fields.
     pub fn build(self) -> Struct {
         Struct {
             name: self.name,
@@ -112,6 +143,7 @@ impl StructBuilder {
     }
 }
 
+/// Represents a struct field in C.
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Field {
     /// The name of the field
@@ -128,10 +160,16 @@ pub struct Field {
 }
 
 impl Field {
+    /// Creates and returns a new `FieldBuilder` to construct a `Field` using the builder pattern.
+    /// ```rust
+    /// let field = Field::new(/*name of the field*/, /*type of the field*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String, t: Type) -> FieldBuilder {
         FieldBuilder::new(name, t)
     }
 
+    /// Returns the type of the field.
     pub fn to_type(&self) -> Type {
         self.t.clone()
     }
@@ -157,6 +195,7 @@ impl Format for Field {
     }
 }
 
+/// A builder for constructing a `Field` instance.
 pub struct FieldBuilder {
     name: String,
     t: Type,
@@ -165,6 +204,11 @@ pub struct FieldBuilder {
 }
 
 impl FieldBuilder {
+    /// Creates and returns a new `FieldBuilder` to construct a `Field` using the builder pattern.
+    /// ```rust
+    /// let field = FieldBuilder::new(/*name of the field*/, /*type of the field*/)
+    ///     .build();
+    /// ```
     pub fn new(name: String, t: Type) -> Self {
         Self {
             name,
@@ -174,20 +218,25 @@ impl FieldBuilder {
         }
     }
 
+    /// Creates and returns a new `FieldBuilder` to construct a `Field` with the given name string
+    /// slice using the builder pattern.
     pub fn new_with_str(name: &str, t: Type) -> Self {
         Self::new(name.to_string(), t)
     }
 
+    /// Sets the optional doc comment for the field and returns the builder for more chaining.
     pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
 
+    /// Sets the optional bit width for the field and returns the builder for more chaining.
     pub fn bitfield_width(mut self, width: u8) -> Self {
         self.width = Some(width);
         self
     }
 
+    /// Consumes the builder and returns a `Field` containing all the information.
     pub fn build(self) -> Field {
         Field {
             name: self.name,

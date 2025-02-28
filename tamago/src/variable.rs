@@ -153,7 +153,7 @@ mod tests {
                 .make_const()
                 .build(),
         )
-        .value(Expr::ConstStr("Hello, world".to_string()))
+        .value(Expr::Str("Hello, world".to_string()))
         .build();
 
         let res = "const char* some_var = \"Hello, world\"";

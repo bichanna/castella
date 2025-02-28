@@ -65,7 +65,7 @@ impl Format for While {
     }
 }
 
-/// A builder constructing a `While` instance.
+/// A builder for constructing a `While` instance.
 pub struct WhileBuilder {
     cond: Expr,
     body: Block,

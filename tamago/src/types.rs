@@ -25,6 +25,7 @@ use std::fmt::{self, Write};
 use crate::{Format, Formatter};
 use tamacro::DisplayFromFormat;
 
+/// Encapsulates all types of base types used in C.
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub enum BaseType {
     /// Represents the `void` type.
@@ -89,6 +90,11 @@ pub enum BaseType {
 }
 
 impl BaseType {
+    /// Creates a new unsigned integer with the given bit size.
+    /// 8 -> UInt8
+    /// 16 -> UInt16
+    /// 32 -> UInt32
+    /// 64 -> UInt64
     pub fn new_uint(bits: u8) -> Self {
         use BaseType::*;
         match bits {
@@ -100,6 +106,11 @@ impl BaseType {
         }
     }
 
+    /// Creates a new signed integer with the given bit size.
+    /// 8 -> Int8
+    /// 16 -> Int16
+    /// 32 -> Int32
+    /// 64 -> Int64
     pub fn new_int(bits: u8) -> Self {
         use BaseType::*;
         match bits {
@@ -111,6 +122,7 @@ impl BaseType {
         }
     }
 
+    /// Whether an integer type or not.
     pub fn is_integer(&self) -> bool {
         use BaseType::*;
         matches!(
@@ -130,6 +142,7 @@ impl BaseType {
         )
     }
 
+    /// Whether a tag type or not.
     pub fn is_tag_type(&self) -> bool {
         use BaseType::*;
         matches!(self, Enum(_) | Struct(_) | Union(_) | TypeDef(_))
@@ -164,9 +177,13 @@ impl Format for BaseType {
     }
 }
 
+/// Encapsulates all type qualifiers in C.
 #[derive(Debug, Clone, Copy, DisplayFromFormat)]
 pub enum TypeQualifier {
+    /// The `volatile` keyword.
     Volatile,
+
+    /// The `const` keyword.
     Const,
 }
 
@@ -180,19 +197,33 @@ impl Format for TypeQualifier {
     }
 }
 
+/// Represents a type in C.
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Type {
+    /// The base type used to construct a type.
     pub base: BaseType,
+
+    /// All the qualifiers for the type.
     pub qualifiers: Vec<TypeQualifier>,
+
+    /// Pointers
     pub pointers: u8,
+
+    /// Array
     pub array: usize,
 }
 
 impl Type {
+    /// Creates and returns a new `TypeBuilder` to construct a `Type` using the builder pattern.
+    /// ```rust
+    /// let t = Type::new(/*base type*/)
+    ///     .build();
+    /// ```
     pub fn new(base: BaseType) -> TypeBuilder {
         TypeBuilder::new(base)
     }
 
+    /// Whether it's an array or not.
     pub fn is_array(&self) -> bool {
         self.array != 0
     }
@@ -213,6 +244,7 @@ impl Format for Type {
     }
 }
 
+/// A builder for constructing a `Type` instance.
 pub struct TypeBuilder {
     base: BaseType,
     qualifiers: Vec<TypeQualifier>,
@@ -221,6 +253,7 @@ pub struct TypeBuilder {
 }
 
 impl TypeBuilder {
+    /// Creates and returns a new `TypeBuilder` to construct a `Type` using the builder pattern.
     pub fn new(base: BaseType) -> Self {
         Self {
             base,
@@ -230,29 +263,35 @@ impl TypeBuilder {
         }
     }
 
+    /// Adds a type qualifier to the type and returns the builder for chaining more operations.
     pub fn type_qualifier(mut self, q: TypeQualifier) -> Self {
         self.qualifiers.push(q);
         self
     }
 
+    /// Makes the type volatile.
     pub fn make_volatile(self) -> Self {
         self.type_qualifier(TypeQualifier::Volatile)
     }
 
+    /// Makes the type const.
     pub fn make_const(self) -> Self {
         self.type_qualifier(TypeQualifier::Const)
     }
 
+    /// Makes the type a pointer.
     pub fn make_pointer(mut self) -> Self {
         self.pointers += 1;
         self
     }
 
+    /// Makes the type an array with the given size.
     pub fn make_array(mut self, size: usize) -> Self {
         self.array = size;
         self
     }
 
+    /// Consumes the builder and returns a `Type` containing all the information.
     pub fn build(self) -> Type {
         Type {
             base: self.base,
