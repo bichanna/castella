@@ -19,6 +19,53 @@
 // SOFTWARE.
 
 //! Library for generating C code
+//!
+//! This library provides an API for generating C source code.
+//! It allows structured generation of C code using Rust, ensuring proper formatting and
+//! structure while maintaining readability.
+//!
+//! ## Modules
+//! - `function`: Defines and formats C functions.
+//! - `preprocessor`: Manages preprocessor directives like `#include`, `#define`, and `#pragma`.
+//! - `variable`: Handles variable declarations.
+//! - `types`: Defines C types and type qualifiers.
+//! - `structs`: Supports defining and managing C struct types.
+//! - `union`: Provides utilities for defining and formatting C unions.
+//! - `typedef`: Facilitates creating `typedef` aliases for types in C.
+//! - `loops`: Constructs and formats C loop structures (`for`, `while`, `do-while`).
+//! - `conditional`: Handles conditional statements like `if`, `switch`.
+//! - `formatter`: Provides utilities for formatting generated C code.
+//! - `scope`: Defines scope management for C code generation.
+//! - `block`: Manages blocks of code within functions and control structures.
+//! - `comment`: Supports adding inline and documentation comments.
+//! - `expr`: Handles C expressions and operations.
+//! - `enums`: Supports enumeration (`enum`) type definitions.
+//!
+//! ## Example Usage
+//! ```rust
+//! use function::FunctionBuilder;
+//! use types::{BaseType, Type};
+//!
+//! let func = FunctionBuilder::new_with_str("my_function", Type::new(BaseType::Int).build())
+//!     .param(
+//!         ParameterBuilder::new_with_str(
+//!             "param1",
+//!             Type::new(BaseType::Float).build(),
+//!         )
+//!         .build(),
+//!     )
+//!     .body(Block::new().build())
+//!     .build();
+//!
+//! println!("{}", func);
+//! ```
+//!
+//! This will generate the following C function:
+//! ```c
+//! int my_function(float param1) {
+//! }
+//! ```
+//!
 
 mod block;
 mod comment;

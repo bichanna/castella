@@ -25,10 +25,16 @@ use std::fmt::{self, Write};
 use crate::{BaseType, DocComment, Field, Format, Formatter, Type};
 use tamacro::DisplayFromFormat;
 
+/// Represents a `union` in C.
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Union {
+    /// The name of the union.
     pub name: String,
+
+    /// The fields of the union.
     pub fields: Vec<Field>,
+
+    /// The optional doc comment.
     pub doc: Option<DocComment>,
 }
 
