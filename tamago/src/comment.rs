@@ -18,8 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! # Comment Module
-//!
 //! This module provides functionality for generating and formatting different types of comments
 //! in C code. It supports standard C-style comments, heading comments for section organization,
 //! and documentation comments typically used before functions, structs, and other declarations.
@@ -38,8 +36,6 @@ use std::fmt::{self, Write};
 use crate::{Format, Formatter};
 use tamacro::DisplayFromFormat;
 
-/// # Comment
-///
 /// Represents a C-style comment in generated code. This struct supports both standard
 /// single-line comments and special heading-style comments that are surrounded by
 /// separator lines for visual emphasis.
@@ -139,8 +135,6 @@ impl Format for Comment {
     }
 }
 
-/// # CommentBuilder
-///
 /// A builder for constructing `Comment` instances in a fluent, chainable manner.
 ///
 /// This builder provides methods for setting the comment text and controlling
@@ -296,8 +290,6 @@ impl CommentBuilder {
     }
 }
 
-/// # DocComment
-///
 /// Represents a documentation comment in C code, using the `///` style syntax.
 ///
 /// Documentation comments are special comments typically placed before function declarations,
@@ -359,8 +351,6 @@ impl Format for DocComment {
     }
 }
 
-/// # DocCommentBuilder
-///
 /// A builder for constructing `DocComment` instances in a fluent, chainable manner.
 ///
 /// This builder provides methods for building documentation comments line by line

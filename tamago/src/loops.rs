@@ -18,35 +18,72 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! This module provides ways to create loop constructs like for, while, and do-while loops.
+//! # Loop Constructs Module
+//!
+//! This module provides structured representations and builders for C-style loop constructs.
+//! It includes implementations for:
+//!
+//! - `While` loops - Conditional loops that check the condition before each iteration
+//! - `DoWhile` loops - Conditional loops that check the condition after each iteration
+//! - `For` loops - Iteration loops with initialization, condition, and increment expressions
+//!
+//! Each loop type follows a builder pattern for flexible and readable construction.
+//! All loop constructs implement the `Format` trait for generating properly formatted C code.
 
 use std::fmt::{self, Write};
 
 use crate::{Block, Expr, Format, Formatter, Statement};
 use tamacro::DisplayFromFormat;
 
-/// Represents a while loop in C.
+/// Represents a standard while loop in C.
 ///
-/// # Examples
+/// A while loop evaluates its condition before each iteration of the loop body.
+/// If the condition evaluates to false before the first iteration, the loop body
+/// will not execute at all.
+///
+/// ## C Syntax
 /// ```c
-/// while (cond) {
-///   // body
+/// while (condition) {
+///     // loop body statements
 /// }
+/// ```
+///
+/// ## Example Usage
+/// ```rust
+/// // Create a while loop that executes while x < 10
+/// let while_loop = While::new(expr!("x < 10"))
+///     .body(Block::new()
+///         .statement(Statement::expr(expr!("x++")))
+///         .build())
+///     .build();
 /// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct While {
-    /// The condition of the while loop.
+    /// The condition expression that determines whether the loop continues.
+    /// The loop executes as long as this condition evaluates to true.
     pub cond: Expr,
 
-    /// The body of the while loop.
+    /// The body block containing statements to be executed in each iteration.
     pub body: Block,
 }
 
 impl While {
-    /// Creates and returns a new `WhileBuilder` to construct a `While` using the builder pattern.
+    /// Creates a new `WhileBuilder` with the specified condition.
+    ///
+    /// This is the starting point for constructing a while loop using the builder pattern.
+    /// After calling this method, chain additional builder methods and finally call `build()`
+    /// to create the while loop.
+    ///
+    /// ## Parameters
+    /// - `cond`: The condition expression that controls the loop execution
+    ///
+    /// ## Returns
+    /// A new `WhileBuilder` instance with the given condition
+    ///
+    /// ## Example
     /// ```rust
-    /// let while_loop = While::new(/*cond*/)
-    ///     .body(/*loop body*/)
+    /// let while_loop = While::new(expr!("count < 10"))
+    ///     .body(loop_body)
     ///     .build();
     /// ```
     pub fn new(cond: Expr) -> WhileBuilder {
@@ -65,18 +102,28 @@ impl Format for While {
     }
 }
 
-/// A builder for constructing a `While` instance.
+/// A builder for constructing a `While` loop instance.
+///
+/// This builder implements the builder pattern for creating while loops
+/// with a fluent interface. It allows for clear and concise loop creation
+/// with method chaining.
 pub struct WhileBuilder {
     cond: Expr,
     body: Block,
 }
 
 impl WhileBuilder {
-    /// Creates and returns a new `WhileBuilder` to construct a `While` using the builder pattern.
+    /// Creates a new `WhileBuilder` with the specified condition expression.
+    ///
+    /// ## Parameters
+    /// - `cond`: The condition expression that will control the loop execution
+    ///
+    /// ## Returns
+    /// A new `WhileBuilder` instance with the given condition and an empty body
+    ///
+    /// ## Example
     /// ```rust
-    /// let while_loop = WhileBuilder::new(/*cond*/)
-    ///     .body(/*loop body*/)
-    ///     .build();
+    /// let builder = WhileBuilder::new(expr!("i < array_size"));
     /// ```
     pub fn new(cond: Expr) -> Self {
         Self {
@@ -85,21 +132,64 @@ impl WhileBuilder {
         }
     }
 
-    /// Sets the body block of the while loop being built and returns the builder for more
-    /// chaining.
+    /// Sets the body block of the while loop.
+    ///
+    /// ## Parameters
+    /// - `body`: A complete `Block` instance containing the statements to execute in the loop
+    ///
+    /// ## Returns
+    /// The builder instance for method chaining
+    ///
+    /// ## Example
+    /// ```rust
+    /// let body_block = Block::new()
+    ///     .statement(Statement::expr(expr!("process_item(array[i])")))
+    ///     .statement(Statement::expr(expr!("i++")))
+    ///     .build();
+    ///
+    /// let builder = WhileBuilder::new(expr!("i < array_size"))
+    ///     .body(body_block);
+    /// ```
     pub fn body(mut self, body: Block) -> Self {
         self.body = body;
         self
     }
 
-    /// Appends a statement to the body block and returns the builder for chaining more operations.
+    /// Appends a single statement to the body block of the while loop.
+    ///
+    /// This is a convenience method for adding one statement at a time
+    /// to the loop body instead of creating a complete `Block` first.
+    ///
+    /// ## Parameters
+    /// - `stmt`: The statement to add to the loop body
+    ///
+    /// ## Returns
+    /// The builder instance for method chaining
+    ///
+    /// ## Example
+    /// ```rust
+    /// let builder = WhileBuilder::new(expr!("i < 10"))
+    ///     .statement(Statement::expr(expr!("sum += array[i]")))
+    ///     .statement(Statement::expr(expr!("i++")));
+    /// ```
     pub fn statement(mut self, stmt: Statement) -> Self {
         self.body.stmts.push(stmt);
         self
     }
 
-    /// Consumes the builder and returns a `While` containing the condition expression and the body
-    /// block.
+    /// Consumes the builder and creates a `While` instance.
+    ///
+    /// This finalizes the building process and returns the complete while loop.
+    ///
+    /// ## Returns
+    /// A fully constructed `While` loop instance
+    ///
+    /// ## Example
+    /// ```rust
+    /// let while_loop = WhileBuilder::new(expr!("data_available()"))
+    ///     .statement(Statement::expr(expr!("process_data()")))
+    ///     .build();
+    /// ```
     pub fn build(self) -> While {
         While {
             cond: self.cond,
@@ -108,26 +198,58 @@ impl WhileBuilder {
     }
 }
 
-/// Represents a do-while expression in C.
+/// Represents a do-while loop in C.
 ///
-/// # Examples
+/// A do-while loop evaluates its condition after each iteration of the loop body.
+/// This guarantees that the loop body executes at least once, regardless of the
+/// condition's initial value.
+///
+/// ## C Syntax
 /// ```c
 /// do {
-///   // do-while body block
-/// } while(cond);
+///     // loop body statements
+/// } while(condition);
+/// ```
+///
+/// ## Example Usage
+/// ```rust
+/// // Create a do-while loop that executes at least once
+/// let do_while = DoWhile::new(expr!("response != 'q'"))
+///     .body(Block::new()
+///         .statement(Statement::expr(expr!("display_menu()")))
+///         .statement(Statement::expr(expr!("response = get_input()")))
+///         .build())
+///     .build();
 /// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct DoWhile {
+    /// The condition expression that determines whether the loop continues.
+    /// The loop executes as long as this condition evaluates to true,
+    /// with the condition checked after each iteration.
     pub cond: Expr,
+
+    /// The body block containing statements to be executed in each iteration.
+    /// This body is guaranteed to execute at least once.
     pub body: Block,
 }
 
 impl DoWhile {
-    /// Creates and returns a new `DoWhileBuilder` to construct a `DoWhile` using the builder
-    /// pattern.
+    /// Creates a new `DoWhileBuilder` with the specified condition.
+    ///
+    /// This is the starting point for constructing a do-while loop using the builder pattern.
+    /// After calling this method, chain additional builder methods and finally call `build()`
+    /// to create the do-while loop.
+    ///
+    /// ## Parameters
+    /// - `cond`: The condition expression that controls the loop continuation
+    ///
+    /// ## Returns
+    /// A new `DoWhileBuilder` instance with the given condition
+    ///
+    /// ## Example
     /// ```rust
-    /// let do_while = DoWhile::new(/*cond*/)
-    ///     .body(/*body block of the do-while loop*/)
+    /// let do_while = DoWhile::new(expr!("data != EOF"))
+    ///     .body(loop_body)
     ///     .build();
     /// ```
     pub fn new(cond: Expr) -> DoWhileBuilder {
@@ -146,19 +268,28 @@ impl Format for DoWhile {
     }
 }
 
-/// A builder for construcing a `DoWhile` instance.
+/// A builder for constructing a `DoWhile` loop instance.
+///
+/// This builder implements the builder pattern for creating do-while loops
+/// with a fluent interface. It allows for clear and concise loop creation
+/// with method chaining.
 pub struct DoWhileBuilder {
     cond: Expr,
     body: Block,
 }
 
 impl DoWhileBuilder {
-    /// Creates and returns a new `DoWhileBuilder` to construct a `DoWhile` using the builder
-    /// pattern.
+    /// Creates a new `DoWhileBuilder` with the specified condition expression.
+    ///
+    /// ## Parameters
+    /// - `cond`: The condition expression that will control the loop continuation
+    ///
+    /// ## Returns
+    /// A new `DoWhileBuilder` instance with the given condition and an empty body
+    ///
+    /// ## Example
     /// ```rust
-    /// let do_while = DoWhileBuilder::new(/*cond*/)
-    ///     .body(/*body block of the do-while loop*/)
-    ///     .build();
+    /// let builder = DoWhileBuilder::new(expr!("valid_input == false"));
     /// ```
     pub fn new(cond: Expr) -> Self {
         Self {
@@ -167,21 +298,66 @@ impl DoWhileBuilder {
         }
     }
 
-    /// Sets the body block of the do-while being built and returns the builder for chaining more
-    /// operations.
+    /// Sets the body block of the do-while loop.
+    ///
+    /// ## Parameters
+    /// - `body`: A complete `Block` instance containing the statements to execute in the loop
+    ///
+    /// ## Returns
+    /// The builder instance for method chaining
+    ///
+    /// ## Example
+    /// ```rust
+    /// let body_block = Block::new()
+    ///     .statement(Statement::expr(expr!("display_prompt()")))
+    ///     .statement(Statement::expr(expr!("input = read_user_input()")))
+    ///     .statement(Statement::expr(expr!("valid_input = validate_input(input)")))
+    ///     .build();
+    ///
+    /// let builder = DoWhileBuilder::new(expr!("valid_input == false"))
+    ///     .body(body_block);
+    /// ```
     pub fn body(mut self, body: Block) -> Self {
         self.body = body;
         self
     }
 
-    /// Appends a statement to the body block and returns the builder for chaining more operations.
+    /// Appends a single statement to the body block of the do-while loop.
+    ///
+    /// This is a convenience method for adding one statement at a time
+    /// to the loop body instead of creating a complete `Block` first.
+    ///
+    /// ## Parameters
+    /// - `stmt`: The statement to add to the loop body
+    ///
+    /// ## Returns
+    /// The builder instance for method chaining
+    ///
+    /// ## Example
+    /// ```rust
+    /// let builder = DoWhileBuilder::new(expr!("has_more_input()"))
+    ///     .statement(Statement::expr(expr!("value = read_next_value()")))
+    ///     .statement(Statement::expr(expr!("process_value(value)")));
+    /// ```
     pub fn statement(mut self, stmt: Statement) -> Self {
         self.body.stmts.push(stmt);
         self
     }
 
-    /// Consumes the builder and returns a `DoWhile` containg the condition expression and the body
-    /// block.
+    /// Consumes the builder and creates a `DoWhile` instance.
+    ///
+    /// This finalizes the building process and returns the complete do-while loop.
+    ///
+    /// ## Returns
+    /// A fully constructed `DoWhile` loop instance
+    ///
+    /// ## Example
+    /// ```rust
+    /// let do_while_loop = DoWhileBuilder::new(expr!("!is_valid(input)"))
+    ///     .statement(Statement::expr(expr!("prompt_user()")))
+    ///     .statement(Statement::expr(expr!("input = get_input()")))
+    ///     .build();
+    /// ```
     pub fn build(self) -> DoWhile {
         DoWhile {
             cond: self.cond,
@@ -190,37 +366,72 @@ impl DoWhileBuilder {
     }
 }
 
-/// Represents a for loop in C.
+/// Represents a for loop in C, which consists of initialization, condition, step expressions,
+/// and a body block of statements.
 ///
-/// # Examples
+/// A for loop provides a compact way to iterate with a counter or other form of state
+/// that is initialized before the loop, checked before each iteration, and updated after
+/// each iteration.
+///
+/// ## C Syntax
 /// ```c
-/// for (init; cond; step) {
-///   // for body block
+/// for (initialization; condition; step) {
+///     // loop body statements
 /// }
+/// ```
+///
+/// Each of the three expressions (initialization, condition, step) is optional.
+///
+/// ## Example Usage
+/// ```rust
+/// // Create a for loop that counts from 0 to 9
+/// let for_loop = For::new()
+///     .init(expr!("int i = 0"))
+///     .cond(expr!("i < 10"))
+///     .step(expr!("i++"))
+///     .body(Block::new()
+///         .statement(Statement::expr(expr!("process(array[i])")))
+///         .build())
+///     .build();
 /// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct For {
-    /// The initialization part of the for loop.
+    /// The initialization expression that runs once before the loop begins.
+    /// This is typically used to declare and initialize loop variables or counters.
+    /// Can be `None` if no initialization is needed.
     pub init: Option<Expr>,
 
-    /// The condition part of the for loop.
+    /// The condition expression that determines whether the loop continues.
+    /// Evaluated before each iteration. The loop executes as long as this
+    /// condition evaluates to true. Can be `None` for an infinite loop.
     pub cond: Option<Expr>,
 
-    /// The step part of the for loop.
+    /// The step (or update) expression that runs after each iteration.
+    /// This is typically used to increment counters or update loop variables.
+    /// Can be `None` if no update is needed.
     pub step: Option<Expr>,
 
-    /// The body block of the for loop.
+    /// The body block containing statements to be executed in each iteration.
     pub body: Block,
 }
 
 impl For {
-    /// Creates and returns a new `ForBuilder` to construct a `For` using the builder pattern.
+    /// Creates a new `ForBuilder` for constructing a for loop.
+    ///
+    /// This is the starting point for constructing a for loop using the builder pattern.
+    /// After calling this method, chain additional builder methods to set the initialization,
+    /// condition, step expressions, and body, then finally call `build()` to create the for loop.
+    ///
+    /// ## Returns
+    /// A new `ForBuilder` instance with all parts set to `None` and an empty body
+    ///
+    /// ## Example
     /// ```rust
     /// let for_loop = For::new()
-    ///     .init(/*init part*/)
-    ///     .cond(/*cond part*/)
-    ///     .step(/*step part*/)
-    ///     .body(/*body block of the for loop*/)
+    ///     .init(expr!("int i = 0"))
+    ///     .cond(expr!("i < array_size"))
+    ///     .step(expr!("i++"))
+    ///     .body(loop_body)
     ///     .build();
     /// ```
     pub fn new() -> ForBuilder {
@@ -253,7 +464,12 @@ impl Format for For {
     }
 }
 
-/// A builder for construcing a `For` instance.
+/// A builder for constructing a `For` loop instance.
+///
+/// This builder implements the builder pattern for creating for loops
+/// with a fluent interface. It allows for clear and concise loop creation
+/// with method chaining, and supports optional components (initialization,
+/// condition, and step expressions).
 pub struct ForBuilder {
     init: Option<Expr>,
     cond: Option<Expr>,
@@ -262,14 +478,14 @@ pub struct ForBuilder {
 }
 
 impl ForBuilder {
-    /// Creates and returns a new `ForBuilder` to construct a `For` using the builder pattern.
+    /// Creates a new `ForBuilder` with all parts initialized to `None` or empty.
+    ///
+    /// ## Returns
+    /// A new `ForBuilder` instance
+    ///
+    /// ## Example
     /// ```rust
-    /// let for_loop = ForBuilder::new()
-    ///     .init(/*init part*/)
-    ///     .cond(/*cond part*/)
-    ///     .step(/*step part*/)
-    ///     .body(/*body block of the for loop*/)
-    ///     .build();
+    /// let builder = ForBuilder::new();
     /// ```
     pub fn new() -> Self {
         Self {
@@ -280,43 +496,131 @@ impl ForBuilder {
         }
     }
 
-    /// Sets the initialization part of the for loop being built and returns the builder for more
-    /// chaining.
+    /// Sets the initialization expression of the for loop.
+    ///
+    /// This expression is executed once before the loop begins, and is typically
+    /// used to declare and initialize loop variables or counters.
+    ///
+    /// ## Parameters
+    /// - `init`: The initialization expression
+    ///
+    /// ## Returns
+    /// The builder instance for method chaining
+    ///
+    /// ## Example
+    /// ```rust
+    /// let builder = ForBuilder::new()
+    ///     .init(expr!("int i = 0"));
+    /// ```
     pub fn init(mut self, init: Expr) -> Self {
         self.init = Some(init);
         self
     }
 
-    /// Sets the condition part of the for loop being built and returns the builder for more
-    /// chaining.
+    /// Sets the condition expression of the for loop.
+    ///
+    /// This expression is evaluated before each iteration of the loop.
+    /// The loop continues as long as this condition evaluates to true.
+    ///
+    /// ## Parameters
+    /// - `cond`: The condition expression
+    ///
+    /// ## Returns
+    /// The builder instance for method chaining
+    ///
+    /// ## Example
+    /// ```rust
+    /// let builder = ForBuilder::new()
+    ///     .cond(expr!("i < array_length"));
+    /// ```
     pub fn cond(mut self, cond: Expr) -> Self {
         self.cond = Some(cond);
         self
     }
 
-    /// Sets the step part of the for loop being built and returns the builder for chaining more
-    /// operations.
+    /// Sets the step (or update) expression of the for loop.
+    ///
+    /// This expression is executed after each iteration of the loop,
+    /// and is typically used to increment counters or update loop variables.
+    ///
+    /// ## Parameters
+    /// - `step`: The step expression
+    ///
+    /// ## Returns
+    /// The builder instance for method chaining
+    ///
+    /// ## Example
+    /// ```rust
+    /// let builder = ForBuilder::new()
+    ///     .step(expr!("i++"));
+    /// ```
     pub fn step(mut self, step: Expr) -> Self {
         self.step = Some(step);
         self
     }
 
-    /// Sets the body block of the for loop being built and returns the builder for chaining more
-    /// operations.
+    /// Sets the body block of the for loop.
+    ///
+    /// ## Parameters
+    /// - `body`: A complete `Block` instance containing the statements to execute in the loop
+    ///
+    /// ## Returns
+    /// The builder instance for method chaining
+    ///
+    /// ## Example
+    /// ```rust
+    /// let body_block = Block::new()
+    ///     .statement(Statement::expr(expr!("sum += array[i]")))
+    ///     .build();
+    ///
+    /// let builder = ForBuilder::new()
+    ///     .body(body_block);
+    /// ```
     pub fn body(mut self, body: Block) -> Self {
         self.body = body;
         self
     }
 
-    /// Appends a statement to the body block of the for loop being built and returns the builder
-    /// for more chaining.
+    /// Appends a single statement to the body block of the for loop.
+    ///
+    /// This is a convenience method for adding one statement at a time
+    /// to the loop body instead of creating a complete `Block` first.
+    ///
+    /// ## Parameters
+    /// - `stmt`: The statement to add to the loop body
+    ///
+    /// ## Returns
+    /// The builder instance for method chaining
+    ///
+    /// ## Example
+    /// ```rust
+    /// let builder = ForBuilder::new()
+    ///     .init(expr!("int i = 0"))
+    ///     .cond(expr!("i < 10"))
+    ///     .step(expr!("i++"))
+    ///     .statement(Statement::expr(expr!("print_element(array[i])")));
+    /// ```
     pub fn statement(mut self, stmt: Statement) -> Self {
         self.body.stmts.push(stmt);
         self
     }
 
-    /// Consumes the builder and returns a `For` containing the optional init, cond, and step
-    /// parts, and the body block.
+    /// Consumes the builder and creates a `For` instance.
+    ///
+    /// This finalizes the building process and returns the complete for loop.
+    ///
+    /// ## Returns
+    /// A fully constructed `For` loop instance
+    ///
+    /// ## Example
+    /// ```rust
+    /// let for_loop = ForBuilder::new()
+    ///     .init(expr!("int i = 0"))
+    ///     .cond(expr!("i < size"))
+    ///     .step(expr!("i++"))
+    ///     .statement(Statement::expr(expr!("process(data[i])")))
+    ///     .build();
+    /// ```
     pub fn build(self) -> For {
         For {
             init: self.init,

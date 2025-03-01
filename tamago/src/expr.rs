@@ -18,110 +18,210 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! This module provides ways to create expressions.
+//! # Expression Module
+//!
+//! This module provides a set of tools for creating, manipulating, and
+//! formatting C expressions. It implements an API for representing various
+//! types of C expressions, including:
+//!
+//! - Literals (integers, floats, booleans, characters, strings)
+//! - Identifiers and variables
+//! - Binary operations (arithmetic, comparison, bitwise)
+//! - Unary operations (increment, decrement, negation, etc.)
+//! - Assignment operations
+//! - Ternary conditionals
+//! - Function calls
+//! - Member access
+//! - Array indexing
+//! - Type casting
+//! - Size queries
+//! - Array and struct initializations
+//!
+//! The module is designed to facilitate C code generation with a type-safe Rust interface.
 
 use std::fmt::{self, Write};
 
 use crate::{Format, Formatter, Type, Variable};
 use tamacro::{DisplayFromConstSymbol, DisplayFromFormat, FormatFromConstSymbol};
 
-/// Encapsulates all types of expressions in C, like binary, unary, literal, ternary, variables,
-/// function calls, and more.
+/// Encapsulates all types of expressions in C.
+///
+/// This enum represents the complete set of expression types in C, providing a
+/// comprehensive way to generate syntactically correct C expressions. Each variant
+/// represents a distinct expression type with its associated data.
+///
+/// # Examples
+///
+/// ```
+/// // Create a binary expression: (a + b)
+/// let add_expr = Expr::new_binary(
+///     Expr::new_ident_with_str("a"),
+///     BinOp::Add,
+///     Expr::new_ident_with_str("b")
+/// );
+///
+/// // Create a function call: printf("Hello, %s", name)
+/// let printf_call = Expr::new_fn_call_with_name(
+///     "printf".to_string(),
+///     vec![
+///         Expr::Str("Hello, %s".to_string()),
+///         Expr::new_ident_with_str("name")
+///     ]
+/// );
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub enum Expr {
-    /// A signed integer literal.
+    /// A signed integer literal (e.g., `42`, `-17`).
     Int(i64),
 
-    /// A unsigned integer literal.
+    /// An unsigned integer literal (e.g., `42u`, `0xFF`).
     UInt(u64),
 
-    /// A double precision floating pointer number literal.
+    /// A double precision floating point number literal (e.g., `3.14159`).
     Double(f64),
 
-    /// A single precision floating pointer number literal.
+    /// A single precision floating point number literal (e.g., `3.14f`).
     Float(f32),
 
-    /// A boolean.
+    /// A boolean value (`true` or `false`).
     Bool(bool),
 
-    /// A one-byte character.
+    /// A one-byte character literal (e.g., `'a'`, `'\n'`).
     Char(char),
 
-    /// A string literal.
+    /// A string literal (e.g., `"hello"`).
     Str(String),
 
-    /// An identifier.
+    /// An identifier representing a variable or function name.
     Ident(String),
 
-    /// Variable declration (could be definition as well)
+    /// Variable declaration or definition with type information.
     Variable(Box<Variable>),
 
-    /// A binary expression, like `1 + 1`.
+    /// A binary expression combining two expressions with an operator.
+    ///
+    /// Examples: `a + b`, `x * y`, `ptr != NULL`
     Binary {
         left: Box<Expr>,
         op: BinOp,
         right: Box<Expr>,
     },
 
-    /// A unary expression, like `-1`.
+    /// A unary expression applying an operator to a single expression.
+    ///
+    /// Examples: `-x`, `!condition`, `++counter`, `&variable`
     Unary { op: UnaryOp, expr: Box<Expr> },
 
-    /// A variable assignment.
+    /// A variable assignment expression.
+    ///
+    /// Examples: `x = 5`, `ptr += offset`, `flags &= mask`
     Assign {
         lvalue: Box<Expr>,
         op: AssignOp,
         value: Box<Expr>,
     },
 
-    /// A ternary operator, like `cond ? true_expr : false_expr`
+    /// A ternary conditional expression.
+    ///
+    /// Example: `condition ? true_value : false_value`
     Ternary {
         cond: Box<Expr>,
         lexpr: Box<Expr>,
         rexpr: Box<Expr>,
     },
 
-    /// A function call.
+    /// A function call expression.
+    ///
+    /// Example: `printf("Hello, %s", name)`
     FnCall { name: Box<Expr>, args: Vec<Expr> },
 
-    /// A struct member access.
+    /// A struct member access expression.
+    ///
+    /// Example: `person.name`
     MemAccess { expr: Box<Expr>, member: String },
 
-    /// Indexing an array
+    /// An array indexing expression.
+    ///
+    /// Example: `array[index]`
     ArrIndex { arr: Box<Expr>, idx: Box<Expr> },
 
-    /// Type casting
+    /// A type casting expression.
+    ///
+    /// Example: `(int*)pointer`
     Cast { t: Type, expr: Box<Expr> },
 
-    /// `sizeof` operator
+    /// A `sizeof` operator expression.
+    ///
+    /// Example: `sizeof(int)`
     SizeOf(Type),
 
-    /// Array initialization. Could be either ordered or designated.
+    /// An array initialization expression.
+    ///
+    /// Examples:
+    /// - In-order: `{1, 2, 3}`
+    /// - Designated: `{[0]=1, [5]=2}`
     InitArr(Vec<(Option<usize>, Box<Expr>)>),
 
-    /// Struct instance initialization. Could be either ordered or designated.
+    /// A struct initialization expression.
+    ///
+    /// Examples:
+    /// - In-order: `{1, "hello", 3.14}`
+    /// - Designated: `{.x=1, .name="hello"}`
     InitStruct(Vec<(Option<String>, Box<Expr>)>),
 
-    /// A raw piece of expression in C.
+    /// A raw C expression as a string (for cases not covered by other variants).
     Raw(String),
 }
 
 impl Expr {
-    /// Creates a new identifier.
+    /// Creates a new identifier expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the identifier as a String.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::Ident` with the given name.
     pub fn new_ident(name: String) -> Self {
         Self::Ident(name)
     }
 
-    /// Creates a new identifier with the given string slice
+    /// Creates a new identifier expression with a string slice.
+    ///
+    /// This is a convenience method that converts the string slice to a String.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the identifier as a string slice.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::Ident` with the given name.
     pub fn new_ident_with_str(name: &str) -> Self {
         Self::new_ident(name.to_string())
     }
 
-    /// Creates a new `NULL`
+    /// Creates a new NULL pointer expression.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::Ident` representing the NULL constant in C.
     pub fn new_null() -> Self {
         Self::new_ident("NULL".to_string())
     }
 
-    /// Creates a new binary expression with the given expressions and binary operator
+    /// Creates a new binary expression with the given expressions and binary operator.
+    ///
+    /// # Arguments
+    ///
+    /// * `left` - The expression on the left side of the operator.
+    /// * `op` - The binary operator.
+    /// * `right` - The expression on the right side of the operator.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::Binary` combining the left and right expressions with the given operator.
     pub fn new_binary(left: Expr, op: BinOp, right: Expr) -> Self {
         Self::Binary {
             left: Box::new(left),
@@ -130,7 +230,16 @@ impl Expr {
         }
     }
 
-    /// Creates a new unary expression with the given expression and unary operator
+    /// Creates a new unary expression with the given expression and unary operator.
+    ///
+    /// # Arguments
+    ///
+    /// * `expr` - The expression to which the operator is applied.
+    /// * `op` - The unary operator.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::Unary` applying the operator to the expression.
     pub fn new_unary(expr: Expr, op: UnaryOp) -> Self {
         Self::Unary {
             expr: Box::new(expr),
@@ -138,8 +247,17 @@ impl Expr {
         }
     }
 
-    /// Creates a new assignment with the given lvalue, the expression, and the assignment
-    /// operator
+    /// Creates a new assignment expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `lvalue` - The expression on the left side (must be a valid lvalue in C).
+    /// * `op` - The assignment operator.
+    /// * `value` - The expression on the right side.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::Assign` representing the assignment operation.
     pub fn new_assign(lvalue: Expr, op: AssignOp, value: Expr) -> Self {
         Self::Assign {
             lvalue: Box::new(lvalue),
@@ -148,7 +266,17 @@ impl Expr {
         }
     }
 
-    /// Creates a new ternary expression with the given condition and expressions.
+    /// Creates a new ternary conditional expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `cond` - The condition expression.
+    /// * `lexpr` - The expression to evaluate if the condition is true.
+    /// * `rexpr` - The expression to evaluate if the condition is false.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::Ternary` representing the conditional expression.
     pub fn new_ternary(cond: Expr, lexpr: Expr, rexpr: Expr) -> Self {
         Self::Ternary {
             cond: Box::new(cond),
@@ -157,7 +285,16 @@ impl Expr {
         }
     }
 
-    /// Creates a new function call expression with the given name and the arguments.
+    /// Creates a new function call expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The expression representing the function name or pointer.
+    /// * `args` - A vector of expressions representing the function arguments.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::FnCall` representing the function call.
     pub fn new_fn_call(name: Expr, args: Vec<Expr>) -> Self {
         Self::FnCall {
             name: Box::new(name),
@@ -165,8 +302,18 @@ impl Expr {
         }
     }
 
-    /// Creates a new function call expression with the given name as a string slice and the
-    /// arguments
+    /// Creates a new function call expression with a string name.
+    ///
+    /// This is a convenience method for calling a function by name.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the function as a String.
+    /// * `args` - A vector of expressions representing the function arguments.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::FnCall` representing the function call.
     pub fn new_fn_call_with_name(name: String, args: Vec<Expr>) -> Self {
         Self::FnCall {
             name: Box::new(Self::Ident(name)),
@@ -174,7 +321,16 @@ impl Expr {
         }
     }
 
-    /// Creates a struct member access expression with the given member string
+    /// Creates a new struct member access expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `expr` - The expression representing the struct instance.
+    /// * `member` - The name of the struct member as a String.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::MemAccess` representing the member access.
     pub fn new_mem_access(expr: Expr, member: String) -> Self {
         Self::MemAccess {
             expr: Box::new(expr),
@@ -182,13 +338,32 @@ impl Expr {
         }
     }
 
-    /// Creates a struct member access expression with the given member string slice
+    /// Creates a new struct member access expression with a string slice.
+    ///
+    /// This is a convenience method that converts the string slice to a String.
+    ///
+    /// # Arguments
+    ///
+    /// * `expr` - The expression representing the struct instance.
+    /// * `member` - The name of the struct member as a string slice.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::MemAccess` representing the member access.
     pub fn new_mem_access_with_str(expr: Expr, member: &str) -> Self {
         Self::new_mem_access(expr, member.to_string())
     }
 
-    /// Creates a new array indexing expression with the given array expression and the index
-    /// expression
+    /// Creates a new array indexing expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `arr` - The expression representing the array.
+    /// * `idx` - The expression representing the index.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::ArrIndex` representing the array indexing operation.
     pub fn new_arr_index(arr: Expr, idx: Expr) -> Self {
         Self::ArrIndex {
             arr: Box::new(arr),
@@ -196,7 +371,16 @@ impl Expr {
         }
     }
 
-    /// Creates a new type cast expression with the given expression
+    /// Creates a new type casting expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - The target type for the cast.
+    /// * `expr` - The expression to be cast.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::Cast` representing the type casting operation.
     pub fn new_cast(t: Type, expr: Expr) -> Self {
         Self::Cast {
             t,
@@ -204,50 +388,101 @@ impl Expr {
         }
     }
 
-    /// Creates a new `sizeof` operator for the given expression
+    /// Creates a new `sizeof` operator expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - The type whose size to query.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::SizeOf` representing the sizeof operation.
     pub fn new_sizeof(t: Type) -> Self {
         Self::SizeOf(t)
     }
 
-    /// Creates a new in-order array initialization expression
+    /// Creates a new in-order array initialization expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `exprs` - A vector of expressions representing the array elements in order.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::InitArr` representing the array initialization.
     pub fn new_init_arr_in_order(exprs: Vec<Expr>) -> Self {
         Self::InitArr(
             exprs
-                .iter()
-                .map(|expr| (None, Box::new(expr.clone())))
+                .into_iter()
+                .map(|expr| (None, Box::new(expr)))
                 .collect(),
         )
     }
 
-    /// Creates a new designated array initialization expression
+    /// Creates a new designated array initialization expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - A vector of indices for the designated initializers.
+    /// * `y` - A vector of expressions representing the values for each index.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::InitArr` representing the designated array initialization.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the lengths of `x` and `y` are not equal.
     pub fn new_init_arr_designated(x: Vec<usize>, y: Vec<Expr>) -> Self {
         assert!(x.len() == y.len());
         Self::InitArr(
-            x.iter()
-                .map(|x| Some(x.clone()))
+            x.into_iter()
+                .map(|x| Some(x))
                 .into_iter()
-                .zip(y.iter().map(|y| Box::new(y.clone())))
+                .zip(y.into_iter().map(|y| Box::new(y)))
                 .collect(),
         )
     }
 
-    /// Creates a new in-order struct initialization expression
+    /// Creates a new in-order struct initialization expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `exprs` - A vector of expressions representing the struct members in order.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::InitStruct` representing the struct initialization.
     pub fn new_init_struct_in_order(exprs: Vec<Expr>) -> Self {
         Self::InitStruct(
             exprs
-                .iter()
-                .map(|expr| (None, Box::new(expr.clone())))
+                .into_iter()
+                .map(|expr| (None, Box::new(expr)))
                 .collect(),
         )
     }
 
-    /// Creates a new designated struct initializastion expression
+    /// Creates a new designated struct initialization expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - A vector of member names for the designated initializers.
+    /// * `y` - A vector of expressions representing the values for each member.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::InitStruct` representing the designated struct initialization.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the lengths of `x` and `y` are not equal.
     pub fn new_init_struct_designated(x: Vec<String>, y: Vec<Expr>) -> Self {
+        assert!(x.len() == y.len());
         Self::InitStruct(
-            x.iter()
-                .map(|x| Some(x.clone()))
+            x.into_iter()
+                .map(|x| Some(x))
                 .into_iter()
-                .zip(y.iter().map(|y| Box::new(y.clone())))
+                .zip(y.into_iter().map(|y| Box::new(y)))
                 .collect(),
         )
     }
@@ -339,6 +574,9 @@ impl Format for Expr {
             SizeOf(t) => {
                 write!(fmt, "sizeof(")?;
                 t.format(fmt)?;
+                if t.is_array() {
+                    write!(fmt, "[{}]", t.array)?;
+                }
                 write!(fmt, ")")
             }
             InitArr(v) => {
@@ -384,122 +622,168 @@ impl Format for Expr {
     }
 }
 
-/// Encapsulates binary operator
+/// Encapsulates binary operators used in C expressions.
+///
+/// This enum represents all binary operators in C, including arithmetic,
+/// comparison, logical, and bitwise operators.
 #[derive(Debug, Clone, DisplayFromConstSymbol, FormatFromConstSymbol)]
 pub enum BinOp {
+    /// Addition operator (`+`)
     #[symbol = "+"]
     Add,
 
+    /// Subtraction operator (`-`)
     #[symbol = "-"]
     Sub,
 
+    /// Multiplication operator (`*`)
     #[symbol = "*"]
     Mul,
 
+    /// Division operator (`/`)
     #[symbol = "/"]
     Div,
 
+    /// Modulo operator (`%`)
     #[symbol = "%"]
     Mod,
 
+    /// Equality comparison operator (`==`)
     #[symbol = "=="]
     Eq,
 
+    /// Inequality comparison operator (`!=`)
     #[symbol = "!="]
     NEq,
 
+    /// Greater than comparison operator (`>`)
     #[symbol = ">"]
     GT,
 
+    /// Less than comparison operator (`<`)
     #[symbol = "<"]
     LT,
 
+    /// Greater than or equal comparison operator (`>=`)
     #[symbol = ">="]
     GTE,
 
+    /// Less than or equal comparison operator (`<=`)
     #[symbol = "<="]
     LTE,
 
+    /// Logical AND operator (`&&`)
     #[symbol = "&&"]
     And,
 
+    /// Logical OR operator (`||`)
     #[symbol = "||"]
     Or,
 
+    /// Bitwise AND operator (`&`)
     #[symbol = "&"]
     BitAnd,
 
+    /// Bitwise OR operator (`|`)
     #[symbol = "|"]
     BitOr,
 
+    /// Bitwise XOR operator (`^`)
     #[symbol = "^"]
     XOr,
 
+    /// Left shift operator (`<<`)
     #[symbol = "<<"]
     LShift,
 
+    /// Right shift operator (`>>`)
     #[symbol = ">>"]
     RShift,
 }
 
-/// Encapsulates unary operators
+/// Encapsulates unary operators used in C expressions.
+///
+/// This enum represents all unary operators in C, including prefix
+/// and postfix operators for various operations.
 #[derive(Debug, Clone, DisplayFromConstSymbol, FormatFromConstSymbol)]
 pub enum UnaryOp {
+    /// Increment operator (`++`), can be prefix or postfix
     #[symbol = "++"]
     Inc,
 
+    /// Decrement operator (`--`), can be prefix or postfix
     #[symbol = "--"]
     Dec,
 
+    /// Unary negation operator (`-`)
     #[symbol = "-"]
     Neg,
 
+    /// Logical negation operator (`!`)
     #[symbol = "!"]
     LogicNeg,
 
+    /// Bitwise NOT operator (`~`)
     #[symbol = "~"]
     BitNot,
 
+    /// Address-of operator (`&`)
     #[symbol = "&"]
     AddrOf,
 
+    /// Dereference operator (`*`)
     #[symbol = "*"]
     Deref,
 }
 
-/// Encapsulates assign operators
+/// Encapsulates assignment operators used in C expressions.
+///
+/// This enum represents all assignment operators in C, including
+/// simple assignment and compound assignments combining assignment
+/// with other operations.
 #[derive(Debug, Clone, DisplayFromConstSymbol, FormatFromConstSymbol)]
 pub enum AssignOp {
+    /// Simple assignment operator (`=`)
     #[symbol = "="]
     Assign,
 
+    /// Addition assignment operator (`+=`)
     #[symbol = "+="]
     AddAssign,
 
+    /// Subtraction assignment operator (`-=`)
     #[symbol = "-="]
     SubAssign,
 
+    /// Multiplication assignment operator (`*=`)
     #[symbol = "*="]
     MulAssign,
 
+    /// Division assignment operator (`/=`)
     #[symbol = "/="]
     DivAssign,
 
+    /// Modulo assignment operator (`%=`)
     #[symbol = "%="]
     ModAssign,
 
+    /// Bitwise AND assignment operator (`&=`)
     #[symbol = "&="]
     BitAndAssign,
 
+    /// Bitwise OR assignment operator (`|=`)
     #[symbol = "|="]
     BitOrAssign,
 
+    /// Bitwise XOR assignment operator (`^=`)
     #[symbol = "^="]
     BitXOrAssign,
 
+    /// Left shift assignment operator (`<<=`)
     #[symbol = "<<="]
     LShiftAssign,
 
+    /// Right shift assignment operator (`>>=`)
     #[symbol = ">>="]
     RShiftAssign,
 }

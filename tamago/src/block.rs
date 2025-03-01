@@ -41,8 +41,6 @@ use crate::{
 };
 use tamacro::DisplayFromFormat;
 
-/// # Block
-///
 /// Represents a scoped block of code in C, delimited by curly braces `{}`.
 /// A `Block` contains a sequence of statements that are executed together
 /// within the same lexical scope.
@@ -114,8 +112,6 @@ impl Format for Block {
     }
 }
 
-/// # BlockBuilder
-///
 /// A builder for constructing `Block` instances in a fluent, chainable manner.
 ///
 /// The builder pattern provides a convenient way to incrementally construct blocks
@@ -288,8 +284,6 @@ impl BlockBuilder {
     }
 }
 
-/// # Statement
-///
 /// Represents the various types of statements and preprocessor directives
 /// that can appear within a C code block.
 ///
