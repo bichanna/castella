@@ -86,7 +86,7 @@ impl Function {
     /// Creates and returns a new `FunctionBuilder` to construct a `Function` using the builder pattern.
     ///
     /// This method simplifies the process of creating complex function declarations
-    /// by providing a fluent interface for defining all function components.
+    /// by providing an interface for defining all function components.
     ///
     /// # Parameters
     ///

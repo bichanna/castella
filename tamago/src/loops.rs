@@ -18,8 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! # Loop Constructs Module
-//!
 //! This module provides structured representations and builders for C-style loop constructs.
 //! It includes implementations for:
 //!
