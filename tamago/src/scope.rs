@@ -18,41 +18,57 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! This module provides ways to create blocks of code, like function bodies, loop bodies,
-//! conditional branches.
+//! This module provides structures and builders for creating and managing C code blocks,
+//! such as function bodies, loop bodies, and conditional branches.
+//!
+//! It defines the primary representation of a C program through the `Scope` struct,
+//! which contains global statements and serves as the root container for generated code.
+//! The module follows a builder pattern approach for constructing C code structures.
 
 use std::fmt::{self, Write};
 
 use crate::*;
 use tamacro::DisplayFromFormat;
 
-/// Represents a global scope in C.
+/// Represents a global scope in C, serving as the root container for all C code elements.
+///
+/// The global scope can contain various global statements like function definitions,
+/// variable declarations, struct definitions, and preprocessor directives.
 ///
 /// # Examples
 /// ```c
-/// int number = 0;
+/// int number = 0;  // Global variable declaration
 ///
 /// int main(void) {
-///   // body block
+///   // Function body block
 /// }
 /// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Scope {
-    /// The optional doc comment.
+    /// Optional documentation comment associated with the scope.
     pub doc: Option<DocComment>,
 
-    /// The global statements in the scope.
+    /// The collection of global statements contained within this scope.
     pub global_stmts: Vec<GlobalStatement>,
 }
 
 impl Scope {
     /// Creates and returns a new `ScopeBuilder` to construct a `Scope` using the builder pattern.
+    ///
+    /// This is the recommended way to create a new `Scope` instance.
+    ///
+    /// # Returns
+    /// A new `ScopeBuilder` instance that can be used to build a `Scope`.
+    ///
+    /// # Examples
     /// ```rust
     /// let scope = Scope::new()
-    ///     .global_statement(/*global statement*/)
+    ///     .global_statement(GlobalStatement::Include(include))
     ///     .new_line()
+    ///     .global_statement(GlobalStatement::Function(function))
     ///     .build();
     /// ```
+    ///
     pub fn new() -> ScopeBuilder {
         ScopeBuilder::new()
     }
@@ -72,17 +88,25 @@ impl Format for Scope {
     }
 }
 
-/// A builder for constructing a `Scope` instance.
+/// A builder for constructing a `Scope` instance using the builder pattern.
+///
+/// This builder provides methods to add various elements to a scope and finally build
+/// the complete `Scope` instance.
 pub struct ScopeBuilder {
     doc: Option<DocComment>,
     global_stmts: Vec<GlobalStatement>,
 }
 
 impl ScopeBuilder {
-    /// Creates and returns a new `ScopeBuilder` to construct a `Scope` using the builder pattern.
+    /// Creates and returns a new `ScopeBuilder` to construct a `Scope`.
+    ///
+    /// # Returns
+    /// A new `ScopeBuilder` instance with default (empty) values.
+    ///
+    /// # Examples
     /// ```rust
     /// let scope = ScopeBuilder::new()
-    ///     .global_statement(/*global statement*/)
+    ///     .global_statement(GlobalStatement::Include(include))
     ///     .new_line()
     ///     .build();
     /// ```
@@ -93,30 +117,57 @@ impl ScopeBuilder {
         }
     }
 
-    /// Sets the doc cocmment for the scope being built and returns the builder for more chaining.
+    /// Sets the documentation comment for the scope being built.
+    ///
+    /// # Parameters
+    /// * `doc` - The documentation comment to associate with the scope.
+    ///
+    /// # Returns
+    /// The builder instance for method chaining.
     pub fn doc(mut self, doc: DocComment) -> Self {
         self.doc = Some(doc);
         self
     }
 
-    /// Sets the global statements of the scope and returns the builder for more chaining.
+    /// Sets all the global statements of the scope at once, replacing any existing statements.
+    ///
+    /// # Parameters
+    /// * `global_stmts` - A vector of global statements to include in the scope.
+    ///
+    /// # Returns
+    /// The builder instance for method chaining.
     pub fn global_statements(mut self, global_stmts: Vec<GlobalStatement>) -> Self {
         self.global_stmts = global_stmts;
         self
     }
 
-    /// Appends a global statement to the scope and returns the builder for more chaining.
+    /// Appends a single global statement to the scope.
+    ///
+    /// # Parameters
+    /// * `global_stmt` - The global statement to append to the scope.
+    ///
+    /// # Returns
+    /// The builder instance for method chaining.
     pub fn global_statement(mut self, global_stmt: GlobalStatement) -> Self {
         self.global_stmts.push(global_stmt);
         self
     }
 
-    /// Appends a new line to the scope and returns the builder for more chaining.
+    /// Appends a new line to the scope for better formatting of the generated code.
+    ///
+    /// This is equivalent to adding `GlobalStatement::NewLine` to the scope.
+    ///
+    /// # Returns
+    /// The builder instance for method chaining.
     pub fn new_line(self) -> Self {
         self.global_statement(GlobalStatement::NewLine)
     }
 
-    /// Consumes the builder and returns a `Scope` containing all the global statements.
+    /// Consumes the builder and returns the constructed `Scope` instance.
+    ///
+    /// # Returns
+    /// A `Scope` instance containing the documentation and global statements
+    /// configured in this builder.
     pub fn build(self) -> Scope {
         Scope {
             doc: self.doc,
@@ -125,67 +176,71 @@ impl ScopeBuilder {
     }
 }
 
-/// Represents a global statement in C.
+/// Represents a global statement in C that can appear at the top level of a C file.
+///
+/// Global statements include function definitions, variable declarations,
+/// type definitions, preprocessor directives, and more.
 ///
 /// # Examples
 /// ```c
-/// int number = 0;
-/// struct Person {
+/// int number = 0;  // Variable declaration
+///
+/// struct Person {   // Struct definition
 ///   char* name;
 ///   int age;
-/// }
+/// };
 /// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub enum GlobalStatement {
-    /// A comment
+    /// A comment in the code.
     Comment(Comment),
 
-    /// An enum definition.
+    /// An enum definition (e.g., `enum Color { RED, GREEN, BLUE };`).
     Enum(Enum),
 
-    /// A struct definition.
+    /// A struct definition (e.g., `struct Person { char* name; int age; };`).
     Struct(Struct),
 
-    /// A function declaration/definition.
+    /// A function declaration or definition.
     Function(Function),
 
-    /// A union definition.
+    /// A union definition (e.g., `union Data { int i; float f; };`).
     Union(Union),
 
-    /// A variable declaration/definition.
+    /// A variable declaration or definition.
     Variable(Variable),
 
-    /// A typedef statement.
+    /// A typedef statement
     TypeDef(TypeDef),
 
-    /// An error preprocessor directive.
+    /// An error preprocessor directive (e.g., `#error "Not supported"`).
     ErrorDirective(ErrorDirective),
 
-    /// An ifdef preprocessor directive.
+    /// An ifdef preprocessor directive (e.g., `#ifdef DEBUG`).
     IfDefDirective(IfDefDirective),
 
-    /// An if preprocessor directive.
+    /// An if preprocessor directive (e.g., `#if PLATFORM == WINDOWS`).
     IfDirective(IfDirective),
 
-    /// An include preprocessor directive.
+    /// An include preprocessor directive (e.g., `#include <stdio.h>`).
     Include(Include),
 
-    /// A line preprocessor directive.
+    /// A line preprocessor directive (e.g., `#line 50 "file.c"`).
     LineDirective(LineDirective),
 
-    /// Macro definition.
+    /// A macro definition (e.g., `#define MAX(a, b) ((a) > (b) ? (a) : (b))`).
     Macro(Macro),
 
-    /// A pragram preprocessor directive.
+    /// A pragma preprocessor directive (e.g., `#pragma once`).
     PragmaDirective(PragmaDirective),
 
-    /// A warning preprocessor directive.
+    /// A warning preprocessor directive (e.g., `#warning "Deprecated feature"`).
     WarningDirective(WarningDirective),
 
-    /// A raw piece of code.
+    /// A raw piece of code inserted directly without processing.
     Raw(String),
 
-    /// A new line.
+    /// A new line for formatting purposes.
     NewLine,
 }
 
