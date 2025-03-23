@@ -18,14 +18,40 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! This module provides ways to express types.
+//! This module provides tools for expressing and managing C types in Rust.
+//!
+//! It defines structures and utilities to represent C base types, type qualifiers,
+//! and complex type constructions such as pointers and arrays. This is particularly
+//! useful for generating C code or bindings programmatically from Rust.
 
 use std::fmt::{self, Write};
 
 use crate::{Format, Formatter};
 use tamacro::DisplayFromFormat;
 
-/// Encapsulates all types of base types used in C.
+/// Represents all base types used in C.
+///
+/// The `BaseType` enum encapsulates the fundamental types in C, including primitive
+/// types like `int` and `float`, sized integer types from `stdint.h`, and aggregate
+/// types like `enum`, `struct`, and `union`. It serves as the foundation for building
+/// more complex types.
+///
+/// # Examples
+///
+/// Basic integer type:
+/// ```c
+/// int
+/// ```
+///
+/// Sized unsigned integer:
+/// ```c
+/// uint32_t
+/// ```
+///
+/// Struct type:
+/// ```c
+/// struct Point
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub enum BaseType {
     /// Represents the `void` type.
@@ -73,7 +99,7 @@ pub enum BaseType {
     /// Represents the `uintptr_t` type from `stdint.h`.
     UIntPtr,
 
-    /// Represents lthe `bool` type from `stdbool.h`.
+    /// Represents the `bool` type from `stdbool.h`.
     Bool,
 
     /// An enumeration type.
@@ -91,10 +117,28 @@ pub enum BaseType {
 
 impl BaseType {
     /// Creates a new unsigned integer with the given bit size.
-    /// 8 -> UInt8
-    /// 16 -> UInt16
-    /// 32 -> UInt32
-    /// 64 -> UInt64
+    ///
+    /// This method maps the provided bit size to the corresponding unsigned integer type:
+    /// - 8 -> `UInt8`
+    /// - 16 -> `UInt16`
+    /// - 32 -> `UInt32`
+    /// - 64 -> `UInt64`
+    /// Any other value defaults to `UInt64`.
+    ///
+    /// # Parameters
+    ///
+    /// * `bits` - The size of the unsigned integer in bits
+    ///
+    /// # Returns
+    ///
+    /// A `BaseType` instance representing the specified unsigned integer type
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let uint_type = BaseType::new_uint(32);
+    /// assert_eq!(uint_type.to_string(), "uint32_t");
+    /// ```
     pub fn new_uint(bits: u8) -> Self {
         use BaseType::*;
         match bits {
@@ -107,10 +151,28 @@ impl BaseType {
     }
 
     /// Creates a new signed integer with the given bit size.
-    /// 8 -> Int8
-    /// 16 -> Int16
-    /// 32 -> Int32
-    /// 64 -> Int64
+    ///
+    /// This method maps the provided bit size to the corresponding signed integer type:
+    /// - 8 -> `Int8`
+    /// - 16 -> `Int16`
+    /// - 32 -> `Int32`
+    /// - 64 -> `Int64`
+    /// Any other value defaults to `Int64`.
+    ///
+    /// # Parameters
+    ///
+    /// * `bits` - The size of the signed integer in bits
+    ///
+    /// # Returns
+    ///
+    /// A `BaseType` instance representing the specified signed integer type
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let int_type = BaseType::new_int(16);
+    /// assert_eq!(int_type.to_string(), "int16_t");
+    /// ```
     pub fn new_int(bits: u8) -> Self {
         use BaseType::*;
         match bits {
@@ -122,7 +184,22 @@ impl BaseType {
         }
     }
 
-    /// Whether an integer type or not.
+    /// Checks whether the type is an integer type.
+    ///
+    /// This includes all signed and unsigned integer types, `char`, `size_t`, `uintptr_t`, and `bool`.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the type is an integer type, `false` otherwise
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let int_type = BaseType::Int;
+    /// assert!(int_type.is_integer());
+    /// let float_type = BaseType::Float;
+    /// assert!(!float_type.is_integer());
+    /// ```
     pub fn is_integer(&self) -> bool {
         use BaseType::*;
         matches!(
@@ -142,7 +219,20 @@ impl BaseType {
         )
     }
 
-    /// Whether a tag type or not.
+    /// Checks whether the type is a tag type (`enum`, `struct`, `union`, or `typedef`).
+    ///
+    /// # Returns
+    ///
+    /// `true` if the type is a tag type, `false` otherwise
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let struct_type = BaseType::Struct("Point".to_string());
+    /// assert!(struct_type.is_tag_type());
+    /// let int_type = BaseType::Int;
+    /// assert!(!int_type.is_tag_type());
+    /// ```
     pub fn is_tag_type(&self) -> bool {
         use BaseType::*;
         matches!(self, Enum(_) | Struct(_) | Union(_) | TypeDef(_))
@@ -177,13 +267,28 @@ impl Format for BaseType {
     }
 }
 
-/// Encapsulates all type qualifiers in C.
+/// Represents type qualifiers in C.
+///
+/// The `TypeQualifier` enum encapsulates C's type qualifiers `const` and `volatile`,
+/// which modify the behavior of variables or pointers in a C program.
+///
+/// # Examples
+///
+/// Const qualifier:
+/// ```c
+/// const int
+/// ```
+///
+/// Volatile qualifier:
+/// ```c
+/// volatile char
+/// ```
 #[derive(Debug, Clone, Copy, DisplayFromFormat)]
 pub enum TypeQualifier {
-    /// The `volatile` keyword.
+    /// The `volatile` keyword, indicating the variable may change unexpectedly.
     Volatile,
 
-    /// The `const` keyword.
+    /// The `const` keyword, indicating the variable's value cannot be modified after initialization.
     Const,
 }
 
@@ -197,7 +302,27 @@ impl Format for TypeQualifier {
     }
 }
 
-/// Represents a type in C.
+/// Represents a complete type in C, including base type, qualifiers, pointers, and arrays.
+///
+/// The `Type` struct combines a `BaseType` with optional qualifiers, pointer levels,
+/// and array sizes to fully describe a C type as it would appear in a declaration.
+///
+/// # Examples
+///
+/// Pointer to const char:
+/// ```c
+/// const char*
+/// ```
+///
+/// Array of integers:
+/// ```c
+/// int[10]
+/// ```
+///
+/// Double pointer to volatile float:
+/// ```c
+/// volatile float**
+/// ```
 #[derive(Debug, Clone, DisplayFromFormat)]
 pub struct Type {
     /// The base type used to construct a type.
@@ -215,15 +340,44 @@ pub struct Type {
 
 impl Type {
     /// Creates and returns a new `TypeBuilder` to construct a `Type` using the builder pattern.
+    ///
+    /// This method provides a fluent interface for defining complex C types incrementally.
+    ///
+    /// # Parameters
+    ///
+    /// * `base` - The base type to start with
+    ///
+    /// # Returns
+    ///
+    /// A `TypeBuilder` instance for configuring and building a `Type`
+    ///
+    /// # Examples
+    ///
     /// ```rust
-    /// let t = Type::new(/*base type*/)
+    /// let t = Type::new(BaseType::Char)
+    ///     .make_const()
+    ///     .make_pointer()
     ///     .build();
+    /// assert_eq!(t.to_string(), "const char*");
     /// ```
     pub fn new(base: BaseType) -> TypeBuilder {
         TypeBuilder::new(base)
     }
 
-    /// Whether it's an array or not.
+    /// Checks whether the type is an array.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the type is an array (array size > 0), `false` otherwise
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let array_type = Type::new(BaseType::Int).make_array(5).build();
+    /// assert!(array_type.is_array());
+    /// let simple_type = Type::new(BaseType::Int).build();
+    /// assert!(!simple_type.is_array());
+    /// ```
     pub fn is_array(&self) -> bool {
         self.array != 0
     }
@@ -244,7 +398,10 @@ impl Format for Type {
     }
 }
 
-/// A builder for constructing a `Type` instance.
+/// A builder for constructing a `Type` instance with a fluent interface.
+///
+/// The `TypeBuilder` allows incremental configuration of a C type's properties,
+/// such as qualifiers, pointers, and array sizes, before finalizing the type.
 pub struct TypeBuilder {
     base: BaseType,
     qualifiers: Vec<TypeQualifier>,
@@ -253,7 +410,21 @@ pub struct TypeBuilder {
 }
 
 impl TypeBuilder {
-    /// Creates and returns a new `TypeBuilder` to construct a `Type` using the builder pattern.
+    /// Creates and returns a new `TypeBuilder` to construct a `Type`.
+    ///
+    /// # Parameters
+    ///
+    /// * `base` - The base type to start with
+    ///
+    /// # Returns
+    ///
+    /// A new `TypeBuilder` instance with default values for qualifiers, pointers, and array size
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let builder = TypeBuilder::new(BaseType::Int);
+    /// ```
     pub fn new(base: BaseType) -> Self {
         Self {
             base,
@@ -263,35 +434,117 @@ impl TypeBuilder {
         }
     }
 
-    /// Adds a type qualifier to the type and returns the builder for chaining more operations.
+    /// Adds a type qualifier to the type being built.
+    ///
+    /// # Parameters
+    ///
+    /// * `q` - The type qualifier to add
+    ///
+    /// # Returns
+    ///
+    /// The builder instance for method chaining
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let builder = TypeBuilder::new(BaseType::Float)
+    ///     .type_qualifier(TypeQualifier::Const);
+    /// ```
     pub fn type_qualifier(mut self, q: TypeQualifier) -> Self {
         self.qualifiers.push(q);
         self
     }
 
     /// Makes the type volatile.
+    ///
+    /// Adds the `volatile` qualifier to the type.
+    ///
+    /// # Returns
+    ///
+    /// The builder instance for method chaining
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let builder = TypeBuilder::new(BaseType::Int).make_volatile();
+    /// assert_eq!(builder.build().to_string(), "volatile int");
+    /// ```
     pub fn make_volatile(self) -> Self {
         self.type_qualifier(TypeQualifier::Volatile)
     }
 
     /// Makes the type const.
+    ///
+    /// Adds the `const` qualifier to the type.
+    ///
+    /// # Returns
+    ///
+    /// The builder instance for method chaining
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let builder = TypeBuilder::new(BaseType::Char).make_const();
+    /// assert_eq!(builder.build().to_string(), "const char");
+    /// ```
     pub fn make_const(self) -> Self {
         self.type_qualifier(TypeQualifier::Const)
     }
 
     /// Makes the type a pointer.
+    ///
+    /// Increases the pointer level by one.
+    ///
+    /// # Returns
+    ///
+    /// The builder instance for method chaining
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let builder = TypeBuilder::new(BaseType::Void).make_pointer();
+    /// assert_eq!(builder.build().to_string(), "void*");
+    /// ```
     pub fn make_pointer(mut self) -> Self {
         self.pointers += 1;
         self
     }
 
     /// Makes the type an array with the given size.
+    ///
+    /// # Parameters
+    ///
+    /// * `size` - The size of the array
+    ///
+    /// # Returns
+    ///
+    /// The builder instance for method chaining
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let builder = TypeBuilder::new(BaseType::Int).make_array(10);
+    /// ```
     pub fn make_array(mut self, size: usize) -> Self {
         self.array = size;
         self
     }
 
-    /// Consumes the builder and returns a `Type` containing all the information.
+    /// Finalizes the type definition and returns a fully constructed `Type`.
+    ///
+    /// # Returns
+    ///
+    /// A fully constructed `Type` instance
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let t = TypeBuilder::new(BaseType::Double)
+    ///     .make_const()
+    ///     .make_pointer()
+    ///     .build();
+    /// assert_eq!(t.to_string(), "const double*");
+    /// ```
     pub fn build(self) -> Type {
         Type {
             base: self.base,
