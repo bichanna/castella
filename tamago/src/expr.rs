@@ -27,6 +27,7 @@
 //! - Literals (integers, floats, booleans, characters, strings)
 //! - Identifiers and variables
 //! - Binary operations (arithmetic, comparison, bitwise)
+//! - Parenthesized expressions
 //! - Unary operations (increment, decrement, negation, etc.)
 //! - Assignment operations
 //! - Ternary conditionals
@@ -106,6 +107,11 @@ pub enum Expr {
         op: BinOp,
         right: Box<Expr>,
     },
+
+    /// A parenthesized expression.
+    ///
+    /// Examples: `(a + b) * c`
+    Parenthesized { expr: Box<Expr> },
 
     /// A unary expression applying an operator to a single expression.
     ///
@@ -227,6 +233,21 @@ impl Expr {
             left: Box::new(left),
             op,
             right: Box::new(right),
+        }
+    }
+
+    /// Creates a new parenthesized expression with the given expression.
+    ///
+    /// # Arguments
+    ///
+    /// * `expr` - The expression to be parenthesized.
+    ///
+    /// # Returns
+    ///
+    /// A new `Expr::Parenthesized` with the given expression.
+    pub fn new_parenthesized(expr: Expr) -> Self {
+        Self::Parenthesized {
+            expr: Box::new(expr),
         }
     }
 
@@ -502,16 +523,18 @@ impl Format for Expr {
             Ident(name) => write!(fmt, "{name}"),
             Variable(var) => var.format(fmt),
             Binary { left, op, right } => {
-                write!(fmt, "(")?;
                 left.format(fmt)?;
                 write!(fmt, " ")?;
                 op.format(fmt)?;
                 write!(fmt, " ")?;
-                right.format(fmt)?;
+                right.format(fmt)
+            }
+            Parenthesized { expr } => {
+                write!(fmt, "(")?;
+                expr.format(fmt)?;
                 write!(fmt, ")")
             }
             Unary { op, expr } => {
-                write!(fmt, "(")?;
                 if !matches!(op, UnaryOp::Inc | UnaryOp::Dec) {
                     op.format(fmt)?;
                 }
@@ -519,25 +542,21 @@ impl Format for Expr {
                 if matches!(op, UnaryOp::Inc | UnaryOp::Dec) {
                     op.format(fmt)?;
                 }
-                write!(fmt, ")")
+                Ok(())
             }
             Assign { lvalue, op, value } => {
-                write!(fmt, "(")?;
                 lvalue.format(fmt)?;
                 write!(fmt, " ")?;
                 op.format(fmt)?;
                 write!(fmt, " ")?;
-                value.format(fmt)?;
-                write!(fmt, ")")
+                value.format(fmt)
             }
             Ternary { cond, lexpr, rexpr } => {
-                write!(fmt, "(")?;
                 cond.format(fmt)?;
                 write!(fmt, " ? ")?;
                 lexpr.format(fmt)?;
                 write!(fmt, " : ")?;
-                rexpr.format(fmt)?;
-                write!(fmt, ")")
+                rexpr.format(fmt)
             }
             FnCall { name, args } => {
                 name.format(fmt)?;
@@ -800,8 +819,19 @@ mod tests {
             BinOp::BitOr,
             Expr::new_binary(Expr::Double(1.23), BinOp::Sub, Expr::Float(3.21)),
         );
-        let res = "((123 < 321) | (1.23 - 3.21f))";
+        let res = "123 < 321 | 1.23 - 3.21f";
         assert_eq!(b.to_string(), res);
+    }
+
+    #[test]
+    fn parenthesized() {
+        let p = Expr::new_binary(
+            Expr::Int(3),
+            BinOp::Mul,
+            Expr::new_parenthesized(Expr::new_binary(Expr::Int(123), BinOp::Add, Expr::Int(321))),
+        );
+        let res = "3 * (123 + 321)";
+        assert_eq!(p.to_string(), res);
     }
 
     #[test]
@@ -813,7 +843,7 @@ mod tests {
             ),
             UnaryOp::Neg,
         );
-        let res = "(-(sizeof(struct some_struct)++))";
+        let res = "-sizeof(struct some_struct)++";
         assert_eq!(u.to_string(), res);
     }
 
@@ -824,7 +854,7 @@ mod tests {
             AssignOp::SubAssign,
             Expr::Int(123),
         );
-        let res = "(abc -= 123)";
+        let res = "abc -= 123";
         assert_eq!(a.to_string(), res);
 
         let b = Expr::new_assign(
@@ -832,7 +862,7 @@ mod tests {
             AssignOp::BitAndAssign,
             Expr::Bool(false),
         );
-        let res = "(abc &= false)";
+        let res = "abc &= false";
         assert_eq!(b.to_string(), res);
     }
 
@@ -843,7 +873,7 @@ mod tests {
             Expr::Str("hello".to_string()),
             Expr::Str("olleh".to_string()),
         );
-        let res = r#"(true ? "hello" : "olleh")"#;
+        let res = r#"true ? "hello" : "olleh""#;
         assert_eq!(t.to_string(), res);
     }
 

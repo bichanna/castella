@@ -628,7 +628,7 @@ mod tests {
             )
             .build();
         let res = r#"double some_function(double val) {
-  return (1.23 + val);
+  return 1.23 + val;
 }
 "#;
         assert_eq!(f.to_string(), res);

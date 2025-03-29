@@ -60,7 +60,7 @@ use tamacro::DisplayFromFormat;
 ///
 /// This would generate C code like:
 /// ```c
-/// if ((x > 5)) {
+/// if (x > 5) {
 ///   return 1;
 /// }
 /// ```
@@ -87,7 +87,7 @@ use tamacro::DisplayFromFormat;
 ///
 /// This would generate C code like:
 /// ```c
-/// if ((x > 5)) {
+/// if (x > 5) {
 ///   return 1;
 /// } else {
 ///   return 0;
@@ -615,7 +615,7 @@ mod tests {
   #error "some error"
   return;
 } else {
-  if ((another_var == some_var)) {
+  if (another_var == some_var) {
     goto hello;
     #warning "some warning"
   }

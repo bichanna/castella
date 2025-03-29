@@ -676,7 +676,7 @@ mod tests {
             })
             .body(Block::new().statement(Statement::Continue).build())
             .build();
-        let res = r#"for (int i = 0; (i < 10); (i++)) {
+        let res = r#"for (int i = 0; i < 10; i++) {
   continue;
 }
 "#;
