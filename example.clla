@@ -1,29 +1,29 @@
 import rl "opt/raylib"
 import "fmt"
 
-TICK_RATE ::= 0.13;
-WINDOW_SIZE ::= 1000;
-GRID_LENGTH ::= 20;
-CELL_SIZE ::= 16;
-MAX_SNAKE_LENGTH ::= GRID_LENGTH * GRID_LENGTH;
-CANVAS_SIZE :: GRID_LENGTH * CELL_SIZE;
+const TICK_RATE = 0.13;
+const WINDOW_SIZE = 1000;
+const GRID_LENGTH = 20;
+const CELL_SIZE = 16;
+const MAX_SNAKE_LENGTH = GRID_LENGTH * GRID_LENGTH;
+const CANVAS_SIZE = GRID_LENGTH * CELL_SIZE;
 
 alias Vec2i: [2]int;
 
-snake: [MAX_SNAKE_LENGTH]Vec2i;
-snake_len: uint;
-move_dir: Vec2i = [0, 1];
-tick_timer: float = TICK_RATE;
-game_over: bool = false;
-food_pos: Vec2i;
+let snake: [MAX_SNAKE_LENGTH]Vec2i;
+let snake_len: uint;
+let move_dir: Vec2i = [0, 1];
+let tick_timer: float = TICK_RATE;
+let game_over: bool = false;
+let food_pos: Vec2i;
 
 func place_food() {
-  occupied: [GRID_LENGTH][GRID_LENGTH]bool;
+  let occupied: [GRID_LENGTH][GRID_LENGTH]bool;
   for (i in 0..<snake_len) {
     occupied[snake[i][0]][snake[i][1]] = true;
   }
 
-  free_cells: [^]Vec2i = make [^]Vec2i;
+  let free_cells: [^]Vec2i = make [^]Vec2i;
   defer destroy free_cells;
 
   for (x in 0..<GRID_LENGTH) {
@@ -34,13 +34,13 @@ func place_food() {
   }
 
   if (free_cells.len > 0) {
-    random_cell_idx := rl::get_random_value(0, int32(len(free_cells) - 1));
+    let random_cell_idx = rl::get_random_value(0, int32(len(free_cells) - 1));
     food_pos = free_cells[random_cell_idx];
   }
 }
 
 func restart() {
-  start_head_pos := Vec2i { GRID_LENGTH / 2, GRID_LENGTH / 2 };
+  let start_head_pos = Vec2i { GRID_LENGTH / 2, GRID_LENGTH / 2 };
   snake[0] = tstart_head_pos;
   snake[1] = start_head_pos - [0, 1];
   snake[2] = start_head_pos - [0, 2];
@@ -75,16 +75,16 @@ func main() : int {
     }
 
     if (tick_timer <= 0) {
-      next_part_pos := snake[0];
+      let next_part_pos = snake[0];
       snake[0] = snake[0] - move_dir;
-      head_pos := snake[0];
+      let head_pos = snake[0];
 
       if (head_pos[0] < 0 or head_pos[1] < 0 or head_pos[0] >= GRID_LENGTH or head_pos[1] >= GRID_LENGTH) {
         game_over = true;
       }
 
       for (i in 1..<snake_len) {
-        curr_pos := snake[i];
+        let curr_pos = snake[i];
         if (curr_pos == head_pos) game_over = true;
 
         snake[i] = next_part_pos;
@@ -119,7 +119,7 @@ func main() : int {
     rl::DrawRectangleRec(food_rect, rl::RED);
 
     for (i in 0..<snake_len) {
-      snake_rect := rl::Rectangle {
+      let snake_rect = rl::Rectangle {
         float(snake[i][0] * CELL_SIZE),
         float(snake[i][1] * CELL_SIZE),
         CELL_SIZE,
@@ -134,8 +134,8 @@ func main() : int {
       rl::DrawText("Press ENTER to play again", 4, 30, 15, rl::BLACK);
     }
 
-    score := snake_len - 3;
-    score_msg: ^string = fmt::alloc_sprintf("Score %v", score)!;
+    let score = snake_len - 3;
+    let score_msg: ^string = fmt::alloc_sprintf("Score %v", score)!;
     defer free score_msg;
     rl::DrawText(score_msg.char_ptr, 4, CANVAS_SIZE - 14, 10, rl::GRAY);
 
