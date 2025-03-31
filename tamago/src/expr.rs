@@ -166,14 +166,14 @@ pub enum Expr {
     /// Examples:
     /// - In-order: `{1, 2, 3}`
     /// - Designated: `{[0]=1, [5]=2}`
-    InitArr(Vec<(Option<usize>, Box<Expr>)>),
+    InitArr(Vec<(Option<usize>, Expr)>),
 
     /// A struct initialization expression.
     ///
     /// Examples:
     /// - In-order: `{1, "hello", 3.14}`
     /// - Designated: `{.x=1, .name="hello"}`
-    InitStruct(Vec<(Option<String>, Box<Expr>)>),
+    InitStruct(Vec<(Option<String>, Expr)>),
 
     /// A raw C expression as a string (for cases not covered by other variants).
     Raw(String),
@@ -432,12 +432,7 @@ impl Expr {
     ///
     /// A new `Expr::InitArr` representing the array initialization.
     pub fn new_init_arr_in_order(exprs: Vec<Expr>) -> Self {
-        Self::InitArr(
-            exprs
-                .into_iter()
-                .map(|expr| (None, Box::new(expr)))
-                .collect(),
-        )
+        Self::InitArr(exprs.into_iter().map(|expr| (None, expr)).collect())
     }
 
     /// Creates a new designated array initialization expression.
@@ -460,7 +455,7 @@ impl Expr {
             x.into_iter()
                 .map(|x| Some(x))
                 .into_iter()
-                .zip(y.into_iter().map(|y| Box::new(y)))
+                .zip(y.into_iter().map(|y| y))
                 .collect(),
         )
     }
@@ -475,12 +470,7 @@ impl Expr {
     ///
     /// A new `Expr::InitStruct` representing the struct initialization.
     pub fn new_init_struct_in_order(exprs: Vec<Expr>) -> Self {
-        Self::InitStruct(
-            exprs
-                .into_iter()
-                .map(|expr| (None, Box::new(expr)))
-                .collect(),
-        )
+        Self::InitStruct(exprs.into_iter().map(|expr| (None, expr)).collect())
     }
 
     /// Creates a new designated struct initialization expression.
@@ -503,7 +493,7 @@ impl Expr {
             x.into_iter()
                 .map(|x| Some(x))
                 .into_iter()
-                .zip(y.into_iter().map(|y| Box::new(y)))
+                .zip(y.into_iter().map(|y| y))
                 .collect(),
         )
     }
