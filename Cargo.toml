@@ -3,7 +3,7 @@ name = "castella"
 version = "0.0.0"
 edition = "2024"
 
-description = "Basically C programming language peppered with my preferences"
+description = "Basically the C programming language peppered with my preferences"
 license = "MIT"
 license-file = "LICENSE.txt"
 categories = ["compilers"]
@@ -13,7 +13,10 @@ repository = "https://github.com/bichanna/castella"
 readme = "README.md"
 
 [dependencies]
-tamago = { path = "tamago", version = "0.1.1" }
+tamago = { path = "tamago" }
+tamacro = { path = "tamago/tamacro" }
+snailquote = "~0.3"
+logos = "~0.15"
 
 [workspace]
 members = [
