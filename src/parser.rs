@@ -503,11 +503,16 @@ impl<'source> Parser<'source> {
     }
 
     fn parse_unary(&mut self) -> Result<Expr, ParseError> {
-        if matches!(self.current()?, Token::Not | Token::Minus) {
-            let unary_op = if matches!(self.current()?, Token::Not) {
-                UnaryOp::LogicNeg
-            } else {
-                UnaryOp::Neg
+        if matches!(
+            self.current()?,
+            Token::Not | Token::Minus | Token::Ampersand | Token::Caret
+        ) {
+            let unary_op = match self.current()? {
+                Token::Not => UnaryOp::LogicNeg,
+                Token::Minus => UnaryOp::Neg,
+                Token::Ampersand => UnaryOp::AddrOf,
+                Token::Caret => UnaryOp::Deref,
+                _ => unreachable!(),
             };
 
             self.next();
@@ -624,6 +629,8 @@ impl<'source> Parser<'source> {
                 self.next();
             }
         }
+
+        self.next();
 
         Ok(Expr::InitStruct { ident, args })
     }

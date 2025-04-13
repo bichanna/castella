@@ -78,6 +78,9 @@ pub enum Token {
     #[token("]")]
     RightBrak,
 
+    #[token("&")]
+    Ampersand,
+
     #[token("^")]
     Caret,
 
@@ -312,6 +315,7 @@ impl std::fmt::Display for Token {
             NotEq => write!(f, "'!='"),
             Eq => write!(f, "'='"),
             DEq => write!(f, "'=='"),
+            Ampersand => writeln!(f, "'&'"),
             SemiColon => write!(f, "';'"),
             Colon => write!(f, "':'"),
             Not => write!(f, "'not'"),
