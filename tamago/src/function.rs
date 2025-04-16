@@ -143,16 +143,14 @@ impl Format for Function {
         write!(fmt, "{}(", self.name)?;
         if self.params.is_empty() {
             write!(fmt, "void")?;
-        } else {
-            if self.params.len() > 0 {
-                for param in &self.params[..self.params.len() - 1] {
-                    param.format(fmt)?;
-                    write!(fmt, ", ")?;
-                }
+        } else if !self.params.is_empty() {
+            for param in &self.params[..self.params.len() - 1] {
+                param.format(fmt)?;
+                write!(fmt, ", ")?;
+            }
 
-                if let Some(last) = self.params.last() {
-                    last.format(fmt)?;
-                }
+            if let Some(last) = self.params.last() {
+                last.format(fmt)?;
             }
         }
 

@@ -451,13 +451,7 @@ impl Expr {
     /// Panics if the lengths of `x` and `y` are not equal.
     pub fn new_init_arr_designated(x: Vec<usize>, y: Vec<Expr>) -> Self {
         assert!(x.len() == y.len());
-        Self::InitArr(
-            x.into_iter()
-                .map(|x| Some(x))
-                .into_iter()
-                .zip(y.into_iter().map(|y| y))
-                .collect(),
-        )
+        Self::InitArr(x.into_iter().map(Some).zip(y).collect())
     }
 
     /// Creates a new in-order struct initialization expression.
@@ -489,13 +483,7 @@ impl Expr {
     /// Panics if the lengths of `x` and `y` are not equal.
     pub fn new_init_struct_designated(x: Vec<String>, y: Vec<Expr>) -> Self {
         assert!(x.len() == y.len());
-        Self::InitStruct(
-            x.into_iter()
-                .map(|x| Some(x))
-                .into_iter()
-                .zip(y.into_iter().map(|y| y))
-                .collect(),
-        )
+        Self::InitStruct(x.into_iter().map(Some).zip(y).collect())
     }
 }
 
@@ -551,7 +539,7 @@ impl Format for Expr {
             FnCall { name, args } => {
                 name.format(fmt)?;
                 write!(fmt, "(")?;
-                if args.len() > 0 {
+                if !args.is_empty() {
                     for arg in &args[..args.len() - 1] {
                         arg.format(fmt)?;
                         write!(fmt, ", ")?;
@@ -590,7 +578,7 @@ impl Format for Expr {
             }
             InitArr(v) => {
                 write!(fmt, "{{")?;
-                if v.len() > 0 {
+                if !v.is_empty() {
                     for x in &v[..v.len() - 1] {
                         if let Some(idx) = x.0 {
                             write!(fmt, "[{idx}]=")?;
@@ -609,7 +597,7 @@ impl Format for Expr {
             }
             InitStruct(v) => {
                 write!(fmt, "{{")?;
-                if v.len() > 0 {
+                if !v.is_empty() {
                     for x in &v[..v.len() - 1] {
                         if let Some(name) = &x.0 {
                             write!(fmt, ".{name}=")?;

@@ -62,7 +62,7 @@ impl<'a> Formatter<'a> {
         self.scope.push(name.to_string());
         let res = f(self);
         self.scope.pop();
-        return res;
+        res
     }
 
     pub fn block<F>(&mut self, f: F) -> fmt::Result
@@ -87,7 +87,7 @@ impl<'a> Formatter<'a> {
         self.spaces += self.indent;
         let res = f(self);
         self.spaces -= self.indent;
-        return res;
+        res
     }
 
     pub fn is_start_of_line(&self) -> bool {

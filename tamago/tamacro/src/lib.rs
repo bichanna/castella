@@ -107,15 +107,12 @@ pub fn derive_format_from_const_symbol(input: TokenStream) -> TokenStream {
 fn get_symbol_attr(variant: &Variant) -> Option<String> {
     for attr in &variant.attrs {
         if attr.path().is_ident("symbol") {
-            match &attr.meta {
-                Meta::NameValue(name_value) => match &name_value.value {
-                    Expr::Lit(lit) => match &lit.lit {
-                        Lit::Str(lit_str) => return Some(lit_str.value()),
-                        _ => {}
-                    },
-                    _ => {}
-                },
-                _ => {}
+            if let Meta::NameValue(name_value) = &attr.meta {
+                if let Expr::Lit(lit) = &name_value.value {
+                    if let Lit::Str(lit_str) = &lit.lit {
+                        return Some(lit_str.value());
+                    }
+                }
             }
         }
     }
