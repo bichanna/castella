@@ -1,4 +1,5 @@
 use logos::Lexer;
+use std::ops::Range;
 use tamago::{AssignOp, BinOp, UnaryOp};
 
 use crate::lexer::*;
@@ -21,15 +22,17 @@ macro_rules! expect {
     }};
 }
 
-pub type ParseError = (usize, String);
+pub type ParseError = (Span, String);
 pub type ParseErrors = Vec<ParseError>;
 
 pub struct Parser<'source> {
     lexer: Lexer<'source, Token>,
     source_path: &'source str,
     source: &'source str,
-    ast: Vec<GlobalStatement>,
     current_token: Option<Result<Token, LexError>>,
+
+    ast: Vec<LocatedGlobalStmt>,
+
     errors: ParseErrors,
 }
 
@@ -50,7 +53,7 @@ impl<'source> Parser<'source> {
         }
     }
 
-    pub fn parse(mut self) -> Result<Vec<GlobalStatement>, ParseErrors> {
+    pub fn parse(mut self) -> Result<Vec<LocatedGlobalStmt>, ParseErrors> {
         while !self.is_end() {
             let stmt = self.parse_global_statement();
             match stmt {
@@ -69,7 +72,7 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_global_statement(&mut self) -> Result<GlobalStatement, ParseError> {
+    fn parse_global_statement(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
         match self.current()? {
             Token::Enum => self.parse_enum(),
             Token::Struct => self.parse_struct(),
@@ -86,31 +89,32 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_enum(&mut self) -> Result<GlobalStatement, ParseError> {
+    fn parse_enum(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
         todo!()
     }
 
-    fn parse_struct(&mut self) -> Result<GlobalStatement, ParseError> {
+    fn parse_struct(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
         todo!()
     }
 
-    fn parse_union(&mut self) -> Result<GlobalStatement, ParseError> {
+    fn parse_union(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
         todo!()
     }
 
-    fn parse_func(&mut self) -> Result<GlobalStatement, ParseError> {
+    fn parse_func(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
         self.next();
 
         let Token::Ident(func_name) = expect!(
             self,
             self.current()?,
             Token::Ident(..),
-            self.get_line_number(),
+            self.lexer.span(),
             "Expected an identifier for the function name but got {}",
             self.current()?
         ) else {
             unreachable!()
         };
+        let span = self.lexer.span();
 
         self.next();
 
@@ -118,36 +122,39 @@ impl<'source> Parser<'source> {
         let ret = self.parse_ret_type()?;
         let body = self.parse_curly_body()?;
 
-        Ok(GlobalStatement::Function {
-            name: func_name,
-            params,
-            ret,
-            body,
+        Ok(Located {
+            node: GlobalStmt::Function {
+                name: func_name,
+                params,
+                ret,
+                body,
+            },
+            span,
         })
     }
 
-    fn parse_let(&mut self) -> Result<GlobalStatement, ParseError> {
+    fn parse_let(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
         todo!()
     }
 
-    fn parse_const(&mut self) -> Result<GlobalStatement, ParseError> {
+    fn parse_const(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
         todo!()
     }
 
-    fn parse_alias(&mut self) -> Result<GlobalStatement, ParseError> {
+    fn parse_alias(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
         todo!()
     }
 
-    fn parse_import(&mut self) -> Result<GlobalStatement, ParseError> {
+    fn parse_import(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
         todo!()
     }
 
-    fn parse_func_params(&mut self) -> Result<Vec<(String, Type)>, ParseError> {
+    fn parse_func_params(&mut self) -> Result<Vec<(String, LocatedType)>, ParseError> {
         expect!(
             self,
             self.current()?,
             Token::LeftParen,
-            self.get_line_number(),
+            self.lexer.span(),
             "Expected {} after function name but got {}",
             Token::LeftParen,
             self.current()?
@@ -155,14 +162,14 @@ impl<'source> Parser<'source> {
 
         self.next();
 
-        let mut params: Vec<(String, Type)> = vec![];
+        let mut params: Vec<(String, LocatedType)> = vec![];
 
         while !matches!(self.current()?, Token::RightParen) {
             let Token::Ident(param_name) = expect!(
                 self,
                 self.current()?,
                 Token::Ident(..),
-                self.get_line_number(),
+                self.lexer.span(),
                 "Expected an identifier for a parameter name but got {}",
                 self.current()?
             ) else {
@@ -175,7 +182,7 @@ impl<'source> Parser<'source> {
                 self,
                 self.current()?,
                 Token::Colon,
-                self.get_line_number(),
+                self.lexer.span(),
                 "Expected {} after parameter name but got {}",
                 Token::Colon,
                 self.current()?
@@ -199,12 +206,12 @@ impl<'source> Parser<'source> {
         Ok(params)
     }
 
-    fn parse_ret_type(&mut self) -> Result<Type, ParseError> {
+    fn parse_ret_type(&mut self) -> Result<LocatedType, ParseError> {
         expect!(
             self,
             self.current()?,
             Token::Colon,
-            self.get_line_number(),
+            self.lexer.span(),
             "Expected {} for specifying return type but got {}",
             Token::Colon,
             self.current()?
@@ -215,28 +222,78 @@ impl<'source> Parser<'source> {
         self.parse_type()
     }
 
-    fn parse_type(&mut self) -> Result<Type, ParseError> {
+    fn parse_type(&mut self) -> Result<LocatedType, ParseError> {
+        let span = self.lexer.span();
+
         match {
             let token = self.current()?;
             self.next();
             token
         } {
-            Token::TVoid => Ok(Type::Void),
-            Token::TDouble => Ok(Type::Double),
-            Token::TFloat => Ok(Type::Float),
-            Token::TChar => Ok(Type::Char),
-            Token::TStr => Ok(Type::Str),
-            Token::TInt8 => Ok(Type::Int8),
-            Token::TInt16 => Ok(Type::Int16),
-            Token::TInt32 => Ok(Type::Int32),
-            Token::TInt64 => Ok(Type::Int64),
-            Token::TUInt8 => Ok(Type::UInt8),
-            Token::TUInt16 => Ok(Type::UInt16),
-            Token::TUInt32 => Ok(Type::UInt32),
-            Token::TUInt64 => Ok(Type::UInt64),
-            Token::TBool => Ok(Type::Bool),
-            Token::Caret => Ok(Type::Pointer(Box::new(self.parse_type()?))),
-            Token::Ident(user_def_type) => Ok(Type::UserDefinedType(user_def_type)),
+            Token::TVoid => Ok(Located {
+                node: Type::Void,
+                span,
+            }),
+            Token::TDouble => Ok(Located {
+                node: Type::Double,
+                span,
+            }),
+            Token::TFloat => Ok(Located {
+                node: Type::Float,
+                span,
+            }),
+            Token::TChar => Ok(Located {
+                node: Type::Char,
+                span,
+            }),
+            Token::TStr => Ok(Located {
+                node: Type::Str,
+                span,
+            }),
+            Token::TInt8 => Ok(Located {
+                node: Type::Int8,
+                span,
+            }),
+            Token::TInt16 => Ok(Located {
+                node: Type::Int16,
+                span,
+            }),
+            Token::TInt32 => Ok(Located {
+                node: Type::Int32,
+                span,
+            }),
+            Token::TInt64 => Ok(Located {
+                node: Type::Int64,
+                span,
+            }),
+            Token::TUInt8 => Ok(Located {
+                node: Type::UInt8,
+                span,
+            }),
+            Token::TUInt16 => Ok(Located {
+                node: Type::UInt16,
+                span,
+            }),
+            Token::TUInt32 => Ok(Located {
+                node: Type::UInt32,
+                span,
+            }),
+            Token::TUInt64 => Ok(Located {
+                node: Type::UInt64,
+                span,
+            }),
+            Token::TBool => Ok(Located {
+                node: Type::Bool,
+                span,
+            }),
+            Token::Caret => Ok(Located {
+                node: Type::Pointer(Box::new(self.parse_type()?.node)),
+                span,
+            }),
+            Token::Ident(user_def_type) => Ok(Located {
+                node: Type::UserDefinedType(user_def_type),
+                span,
+            }),
             Token::LeftBrak => {
                 let mut num: usize = 0;
                 let is_darray = match self.current()? {
@@ -260,7 +317,7 @@ impl<'source> Parser<'source> {
                     self,
                     self.current()?,
                     Token::RightBrak,
-                    self.get_line_number(),
+                    self.lexer.span(),
                     "Expected {} for the {} type but got {}",
                     Token::RightBrak,
                     if is_darray { "dynamic array" } else { "array" },
@@ -272,21 +329,27 @@ impl<'source> Parser<'source> {
                 let elem_type = self.parse_type()?;
 
                 if is_darray {
-                    Ok(Type::DArray(Box::new(elem_type)))
+                    Ok(Located {
+                        node: Type::DArray(Box::new(elem_type.node)),
+                        span,
+                    })
                 } else {
-                    Ok(Type::Array(num, Box::new(elem_type)))
+                    Ok(Located {
+                        node: Type::Array(num, Box::new(elem_type.node)),
+                        span,
+                    })
                 }
             }
             token => Err(self.create_error(format!("Expected type expression but got {}", token))),
         }
     }
 
-    fn parse_curly_body(&mut self) -> Result<Vec<Statement>, ParseError> {
+    fn parse_curly_body(&mut self) -> Result<Vec<LocatedStmt>, ParseError> {
         expect!(
             self,
             self.current()?,
             Token::LeftBrace,
-            self.get_line_number(),
+            self.lexer.span(),
             "Expected {} for a block but got {}",
             Token::LeftBrace,
             self.current()?
@@ -294,7 +357,7 @@ impl<'source> Parser<'source> {
 
         self.next();
 
-        let mut body: Vec<Statement> = vec![];
+        let mut body: Vec<LocatedStmt> = vec![];
 
         while !matches!(self.current()?, Token::RightBrace) {
             body.push(self.parse_statement()?);
@@ -305,7 +368,7 @@ impl<'source> Parser<'source> {
         Ok(body)
     }
 
-    fn parse_statement(&mut self) -> Result<Statement, ParseError> {
+    fn parse_statement(&mut self) -> Result<LocatedStmt, ParseError> {
         match self.current()? {
             Token::Let => todo!(),
             Token::Const => todo!(),
@@ -319,12 +382,13 @@ impl<'source> Parser<'source> {
             Token::Free => todo!(),
             _ => {
                 let expr = self.parse_expression()?;
+                let span = expr.span.clone();
 
                 expect!(
                     self,
                     self.current()?,
                     Token::SemiColon,
-                    self.get_line_number(),
+                    self.lexer.span(),
                     "Expected {} at the end of a statement but got {}",
                     Token::SemiColon,
                     self.current()?
@@ -332,12 +396,15 @@ impl<'source> Parser<'source> {
 
                 self.next();
 
-                Ok(Statement::Expression { expr })
+                Ok(Located {
+                    node: Stmt::Expression { expr },
+                    span,
+                })
             }
         }
     }
 
-    fn parse_expression(&mut self) -> Result<Expr, ParseError> {
+    fn parse_expression(&mut self) -> Result<LocatedExpr, ParseError> {
         let expr = self.parse_or_expr()?;
 
         match self.current()? {
@@ -352,55 +419,71 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_assign(&mut self, lexpr: Expr, op: AssignOp) -> Result<Expr, ParseError> {
+    fn parse_assign(
+        &mut self,
+        lexpr: LocatedExpr,
+        op: AssignOp,
+    ) -> Result<LocatedExpr, ParseError> {
+        let span = self.lexer.span();
         self.next();
 
         let rexpr = self.parse_expression()?;
 
-        Ok(Expr::Assign {
-            lvalue: Box::new(lexpr),
-            op,
-            value: Box::new(rexpr),
+        Ok(Located {
+            node: Expr::Assign {
+                lvalue: Box::new(lexpr),
+                op,
+                value: Box::new(rexpr),
+            },
+            span,
         })
     }
 
-    fn parse_or_expr(&mut self) -> Result<Expr, ParseError> {
+    fn parse_or_expr(&mut self) -> Result<LocatedExpr, ParseError> {
         let mut expr = self.parse_and_expr()?;
 
         while matches!(self.current()?, Token::Or) {
+            let span = self.lexer.span();
             self.next();
 
             let rexpr = self.parse_and_expr()?;
 
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                op: BinOp::Or,
-                right: Box::new(rexpr),
+            expr = Located {
+                node: Expr::Binary {
+                    left: Box::new(expr),
+                    op: BinOp::Or,
+                    right: Box::new(rexpr),
+                },
+                span,
             };
         }
 
         Ok(expr)
     }
 
-    fn parse_and_expr(&mut self) -> Result<Expr, ParseError> {
+    fn parse_and_expr(&mut self) -> Result<LocatedExpr, ParseError> {
         let mut expr = self.parse_equality()?;
 
         while matches!(self.current()?, Token::And) {
+            let span = self.lexer.span();
             self.next();
 
             let rexpr = self.parse_equality()?;
 
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                op: BinOp::And,
-                right: Box::new(rexpr),
+            expr = Located {
+                node: Expr::Binary {
+                    left: Box::new(expr),
+                    op: BinOp::And,
+                    right: Box::new(rexpr),
+                },
+                span,
             };
         }
 
         Ok(expr)
     }
 
-    fn parse_equality(&mut self) -> Result<Expr, ParseError> {
+    fn parse_equality(&mut self) -> Result<LocatedExpr, ParseError> {
         let mut expr = self.parse_comparison()?;
 
         while matches!(self.current()?, Token::NotEq | Token::DEq) {
@@ -410,21 +493,25 @@ impl<'source> Parser<'source> {
                 BinOp::Eq
             };
 
+            let span = self.lexer.span();
             self.next();
 
             let rexpr = self.parse_comparison()?;
 
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                op: bin_op,
-                right: Box::new(rexpr),
+            expr = Located {
+                node: Expr::Binary {
+                    left: Box::new(expr),
+                    op: bin_op,
+                    right: Box::new(rexpr),
+                },
+                span,
             };
         }
 
         Ok(expr)
     }
 
-    fn parse_comparison(&mut self) -> Result<Expr, ParseError> {
+    fn parse_comparison(&mut self) -> Result<LocatedExpr, ParseError> {
         let mut expr = self.parse_term_expr()?;
 
         while matches!(
@@ -439,21 +526,25 @@ impl<'source> Parser<'source> {
                 _ => unreachable!(),
             };
 
+            let span = self.lexer.span();
             self.next();
 
             let rexpr = self.parse_term_expr()?;
 
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                op: bin_op,
-                right: Box::new(rexpr),
+            expr = Located {
+                node: Expr::Binary {
+                    left: Box::new(expr),
+                    op: bin_op,
+                    right: Box::new(rexpr),
+                },
+                span,
             };
         }
 
         Ok(expr)
     }
 
-    fn parse_term_expr(&mut self) -> Result<Expr, ParseError> {
+    fn parse_term_expr(&mut self) -> Result<LocatedExpr, ParseError> {
         let mut expr = self.parse_factor_expr()?;
 
         while matches!(self.current()?, Token::Minus | Token::Plus) {
@@ -463,21 +554,25 @@ impl<'source> Parser<'source> {
                 BinOp::Add
             };
 
+            let span = self.lexer.span();
             self.next();
 
             let rexpr = self.parse_factor_expr()?;
 
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                op: bin_op,
-                right: Box::new(rexpr),
+            expr = Located {
+                node: Expr::Binary {
+                    left: Box::new(expr),
+                    op: bin_op,
+                    right: Box::new(rexpr),
+                },
+                span,
             };
         }
 
         Ok(expr)
     }
 
-    fn parse_factor_expr(&mut self) -> Result<Expr, ParseError> {
+    fn parse_factor_expr(&mut self) -> Result<LocatedExpr, ParseError> {
         let mut expr = self.parse_unary()?;
 
         while matches!(self.current()?, Token::Div | Token::Mod | Token::Mul) {
@@ -488,21 +583,25 @@ impl<'source> Parser<'source> {
                 _ => unreachable!(),
             };
 
+            let span = self.lexer.span();
             self.next();
 
             let rexpr = self.parse_unary()?;
 
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                op: bin_op,
-                right: Box::new(rexpr),
+            expr = Located {
+                node: Expr::Binary {
+                    left: Box::new(expr),
+                    op: bin_op,
+                    right: Box::new(rexpr),
+                },
+                span,
             };
         }
 
         Ok(expr)
     }
 
-    fn parse_unary(&mut self) -> Result<Expr, ParseError> {
+    fn parse_unary(&mut self) -> Result<LocatedExpr, ParseError> {
         if matches!(
             self.current()?,
             Token::Not | Token::Minus | Token::Ampersand | Token::Caret
@@ -518,17 +617,21 @@ impl<'source> Parser<'source> {
             self.next();
 
             let val = self.parse_unary()?;
+            let span = val.span.clone();
 
-            Ok(Expr::Unary {
-                op: unary_op,
-                expr: Box::new(val),
+            Ok(Located {
+                node: Expr::Unary {
+                    op: unary_op,
+                    expr: Box::new(val),
+                },
+                span,
             })
         } else {
             self.parse_call()
         }
     }
 
-    fn parse_call(&mut self) -> Result<Expr, ParseError> {
+    fn parse_call(&mut self) -> Result<LocatedExpr, ParseError> {
         let mut expr = self.parse_primary_expr()?;
 
         loop {
@@ -564,10 +667,12 @@ impl<'source> Parser<'source> {
         Ok(expr)
     }
 
-    fn parse_fn_call(&mut self, callee: Expr) -> Result<Expr, ParseError> {
+    fn parse_fn_call(&mut self, callee: LocatedExpr) -> Result<LocatedExpr, ParseError> {
+        let span = callee.span.clone();
+
         self.next();
 
-        let mut args: Vec<Expr> = vec![];
+        let mut args: Vec<LocatedExpr> = vec![];
 
         while !matches!(self.current()?, Token::RightParen) {
             let arg = self.parse_expression()?;
@@ -582,22 +687,26 @@ impl<'source> Parser<'source> {
 
         self.next();
 
-        Ok(Expr::FnCall {
-            name: Box::new(callee),
-            args,
+        Ok(Located {
+            node: Expr::FnCall {
+                name: Box::new(callee),
+                args,
+            },
+            span,
         })
     }
 
-    fn parse_indexing(&mut self, expr: Expr) -> Result<Expr, ParseError> {
+    fn parse_indexing(&mut self, expr: LocatedExpr) -> Result<LocatedExpr, ParseError> {
         self.next();
 
         let index = self.parse_expression()?;
+        let span = index.span.clone();
 
         expect!(
             self,
             self.current()?,
             Token::RightBrak,
-            self.get_line_number(),
+            self.lexer.span(),
             "Expected a pairing {} for indexing but got {}",
             Token::RightBrak,
             self.current()?
@@ -605,20 +714,24 @@ impl<'source> Parser<'source> {
 
         self.next();
 
-        Ok(Expr::ArrIndex {
-            arr: Box::new(expr),
-            idx: Box::new(index),
+        Ok(Located {
+            node: Expr::ArrIndex {
+                arr: Box::new(expr),
+                idx: Box::new(index),
+            },
+            span,
         })
     }
 
-    fn parse_struct_init(&mut self, expr: Expr) -> Result<Expr, ParseError> {
-        let Expr::Ident(ident) = expr else {
+    fn parse_struct_init(&mut self, expr: LocatedExpr) -> Result<LocatedExpr, ParseError> {
+        let span = expr.span;
+        let Expr::Ident(ident) = expr.node else {
             unreachable!()
         };
 
         self.next();
 
-        let mut args: Vec<(String, Expr)> = vec![];
+        let mut args: Vec<(String, LocatedExpr)> = vec![];
 
         while !matches!(self.current()?, Token::RightBrace) {
             args.push(self.parse_struct_init_arg()?);
@@ -632,11 +745,15 @@ impl<'source> Parser<'source> {
 
         self.next();
 
-        Ok(Expr::InitStruct { ident, args })
+        Ok(Located {
+            node: Expr::InitStruct { ident, args },
+            span,
+        })
     }
 
-    fn parse_enum_variant(&mut self, expr: Expr) -> Result<Expr, ParseError> {
-        let Expr::Ident(ident) = expr else {
+    fn parse_enum_variant(&mut self, expr: LocatedExpr) -> Result<LocatedExpr, ParseError> {
+        let span = expr.span;
+        let Expr::Ident(ident) = expr.node else {
             unreachable!()
         };
 
@@ -650,58 +767,89 @@ impl<'source> Parser<'source> {
 
         self.next();
 
-        Ok(Expr::EnumVarAccess { ident, variant })
+        Ok(Located {
+            node: Expr::EnumVarAccess { ident, variant },
+            span,
+        })
     }
 
-    fn parse_struct_member_field(&mut self, expr: Expr) -> Result<Expr, ParseError> {
+    fn parse_struct_member_field(&mut self, expr: LocatedExpr) -> Result<LocatedExpr, ParseError> {
         self.next();
 
+        let span = expr.span.clone();
         let Token::Ident(member) = self.current()? else {
             unreachable!()
         };
 
         self.next();
 
-        Ok(Expr::MemAccess {
-            expr: Box::new(expr),
-            member,
+        Ok(Located {
+            node: Expr::MemAccess {
+                expr: Box::new(expr),
+                member,
+            },
+            span,
         })
     }
 
-    fn parse_module_access(&mut self, expr: Expr) -> Result<Expr, ParseError> {
+    fn parse_module_access(&mut self, expr: LocatedExpr) -> Result<LocatedExpr, ParseError> {
         todo!()
     }
 
-    fn parse_primary_expr(&mut self) -> Result<Expr, ParseError> {
+    fn parse_primary_expr(&mut self) -> Result<LocatedExpr, ParseError> {
         match self.current()? {
             Token::True => {
+                let span = self.lexer.span();
                 self.next();
-                Ok(Expr::Bool(true))
+                Ok(Located {
+                    node: Expr::Bool(true),
+                    span,
+                })
             }
 
             Token::False => {
+                let span = self.lexer.span();
                 self.next();
-                Ok(Expr::Bool(false))
+                Ok(Located {
+                    node: Expr::Bool(false),
+                    span,
+                })
             }
 
             Token::Int(val) => {
+                let span = self.lexer.span();
                 self.next();
-                Ok(Expr::Int(val))
+                Ok(Located {
+                    node: Expr::Int(val),
+                    span,
+                })
             }
 
             Token::Double(val) => {
+                let span = self.lexer.span();
                 self.next();
-                Ok(Expr::Double(val))
+                Ok(Located {
+                    node: Expr::Double(val),
+                    span,
+                })
             }
 
             Token::Str(val) => {
+                let span = self.lexer.span();
                 self.next();
-                Ok(Expr::Str(val))
+                Ok(Located {
+                    node: Expr::Str(val),
+                    span,
+                })
             }
 
             Token::Ident(ident) => {
+                let span = self.lexer.span();
                 self.next();
-                Ok(Expr::Ident(ident))
+                Ok(Located {
+                    node: Expr::Ident(ident),
+                    span,
+                })
             }
 
             Token::LeftParen => self.parse_parenthesized(),
@@ -714,16 +862,17 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn parse_parenthesized(&mut self) -> Result<Expr, ParseError> {
+    fn parse_parenthesized(&mut self) -> Result<LocatedExpr, ParseError> {
         self.next();
 
+        let l = self.lexer.span();
         let expr = self.parse_expression()?;
 
         expect!(
             self,
             self.current()?,
             Token::RightParen,
-            self.get_line_number(),
+            self.lexer.span(),
             "Expected {} for parenthesized expression but got {}",
             Token::RightParen,
             self.current()?
@@ -731,28 +880,39 @@ impl<'source> Parser<'source> {
 
         self.next();
 
-        Ok(Expr::Parenthesized {
-            expr: Box::new(expr),
+        Ok(Located {
+            node: Expr::Parenthesized {
+                expr: Box::new(expr),
+            },
+            span: l,
         })
     }
 
-    fn parse_make_expr(&mut self) -> Result<Expr, ParseError> {
+    fn parse_make_expr(&mut self) -> Result<LocatedExpr, ParseError> {
         self.next();
 
-        let t = self.parse_type()?;
+        let l = self.lexer.span();
+        let t = self.parse_type()?.node;
 
-        Ok(Expr::Make { t })
+        Ok(Located {
+            node: Expr::Make { t },
+            span: l,
+        })
     }
 
-    fn parse_new_expr(&mut self) -> Result<Expr, ParseError> {
+    fn parse_new_expr(&mut self) -> Result<LocatedExpr, ParseError> {
         self.next();
 
-        let t = self.parse_type()?;
+        let l = self.lexer.span();
+        let t = self.parse_type()?.node;
 
-        Ok(Expr::New { t })
+        Ok(Located {
+            node: Expr::New { t },
+            span: l,
+        })
     }
 
-    fn parse_struct_init_arg(&mut self) -> Result<(String, Expr), ParseError> {
+    fn parse_struct_init_arg(&mut self) -> Result<(String, LocatedExpr), ParseError> {
         let Token::Ident(ident) = self.current()? else {
             unreachable!()
         };
@@ -763,7 +923,7 @@ impl<'source> Parser<'source> {
             self,
             self.current()?,
             Token::Eq,
-            self.get_line_number(),
+            self.lexer.span(),
             "Expected {} got but {}",
             Token::Eq,
             self.current()?
@@ -783,10 +943,10 @@ impl<'source> Parser<'source> {
                 Ok(res.clone())
             } else {
                 let e = res.clone().unwrap_err();
-                Err((self.get_line_number(), e.msg))
+                Err((self.lexer.span(), e.msg))
             }
         } else {
-            Err((self.get_line_number(), "Unexpected end of file".to_string()))
+            Err((self.lexer.span(), "Unexpected end of file".to_string()))
         }
     }
 
@@ -795,12 +955,12 @@ impl<'source> Parser<'source> {
         self.current_token = self.lexer.next();
     }
 
-    fn create_error_with_line_num(&self, msg: String, line_num: usize) -> ParseError {
-        (line_num, msg)
+    fn create_error_with_line_num(&self, msg: String, span: Span) -> ParseError {
+        (span, msg)
     }
 
     fn create_error(&self, msg: String) -> ParseError {
-        (self.get_line_number(), msg)
+        (self.lexer.span(), msg)
     }
 
     fn synchronize(&mut self) {
@@ -834,12 +994,18 @@ impl<'source> Parser<'source> {
     fn is_end(&self) -> bool {
         self.current_token.is_none()
     }
+}
 
-    fn get_line_number(&self) -> usize {
-        let span = self.lexer.span();
-        let before = &self.source[0..span.start];
-        before.chars().filter(|&c| c == '\n').count() + 1
-    }
+pub type LocatedExpr = Located<Expr>;
+pub type LocatedStmt = Located<Stmt>;
+pub type LocatedGlobalStmt = Located<GlobalStmt>;
+pub type LocatedType = Located<Type>;
+pub type Span = Range<usize>;
+
+#[derive(Debug, Clone)]
+pub struct Located<T> {
+    node: T,
+    span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -851,33 +1017,33 @@ pub enum Expr {
     Str(String),
     Ident(String),
     Binary {
-        left: Box<Expr>,
+        left: Box<LocatedExpr>,
         op: BinOp,
-        right: Box<Expr>,
+        right: Box<LocatedExpr>,
     },
     Parenthesized {
-        expr: Box<Expr>,
+        expr: Box<LocatedExpr>,
     },
     Unary {
         op: UnaryOp,
-        expr: Box<Expr>,
+        expr: Box<LocatedExpr>,
     },
     Assign {
-        lvalue: Box<Expr>,
+        lvalue: Box<LocatedExpr>,
         op: AssignOp,
-        value: Box<Expr>,
+        value: Box<LocatedExpr>,
     },
     Ternary {
-        cond: Box<Expr>,
-        lexpr: Box<Expr>,
-        rexpr: Box<Expr>,
+        cond: Box<LocatedExpr>,
+        lexpr: Box<LocatedExpr>,
+        rexpr: Box<LocatedExpr>,
     },
     FnCall {
-        name: Box<Expr>,
-        args: Vec<Expr>,
+        name: Box<LocatedExpr>,
+        args: Vec<LocatedExpr>,
     },
     MemAccess {
-        expr: Box<Expr>,
+        expr: Box<LocatedExpr>,
         member: String,
     },
     EnumVarAccess {
@@ -885,26 +1051,26 @@ pub enum Expr {
         variant: String,
     },
     ArrIndex {
-        arr: Box<Expr>,
-        idx: Box<Expr>,
+        arr: Box<LocatedExpr>,
+        idx: Box<LocatedExpr>,
     },
     Cast {
-        t: Type,
-        expr: Box<Expr>,
+        t: LocatedType,
+        expr: Box<LocatedExpr>,
     },
     Sizeof {
         t: Type,
     },
     InitArr {
-        elems: Vec<Expr>,
+        elems: Vec<LocatedExpr>,
     },
     InitArrDesignated {
         idxs: Vec<usize>,
-        elems: Vec<Expr>,
+        elems: Vec<LocatedExpr>,
     },
     InitStruct {
         ident: String,
-        args: Vec<(String, Expr)>,
+        args: Vec<(String, LocatedExpr)>,
     },
     Make {
         t: Type,
@@ -915,76 +1081,76 @@ pub enum Expr {
 }
 
 #[derive(Debug, Clone)]
-pub enum Statement {
+pub enum Stmt {
     Variable {
         name: String,
         t: Option<Type>,
-        value: Option<Expr>,
+        value: Option<LocatedExpr>,
         is_static: bool,
         is_const: bool,
     },
     Expression {
-        expr: Expr,
+        expr: LocatedExpr,
     },
     Return {
-        value: Option<Expr>,
+        value: Option<LocatedExpr>,
     },
     Break,
     Continue,
     If {
-        cond: Expr,
-        then: Vec<Statement>,
-        other: Option<Vec<Statement>>,
+        cond: LocatedExpr,
+        then: Vec<LocatedStmt>,
+        other: Option<Vec<LocatedStmt>>,
     },
     While {
-        cond: Expr,
-        body: Vec<Statement>,
+        cond: LocatedExpr,
+        body: Vec<LocatedStmt>,
         do_while: bool,
     },
     Defer {
-        body: Vec<Statement>,
+        body: Vec<LocatedStmt>,
     },
     Destroy {
-        expr: Expr,
+        expr: LocatedExpr,
     },
     Free {
-        expr: Expr,
+        expr: LocatedExpr,
     },
 }
 
 #[derive(Debug, Clone)]
-pub enum GlobalStatement {
+pub enum GlobalStmt {
     Enum {
         name: String,
         variants: Vec<(String, Option<i64>)>,
     },
     Struct {
         name: String,
-        fields: Vec<(String, Type)>,
+        fields: Vec<(String, LocatedType)>,
     },
     Union {
         name: String,
-        fields: Vec<(String, Type)>,
+        fields: Vec<(String, LocatedType)>,
     },
     Function {
         name: String,
-        params: Vec<(String, Type)>,
-        ret: Type,
-        body: Vec<Statement>,
+        params: Vec<(String, LocatedType)>,
+        ret: LocatedType,
+        body: Vec<LocatedStmt>,
     },
     Variable {
         name: String,
         t: Option<Type>,
-        value: Option<Expr>,
+        value: Option<LocatedExpr>,
         is_static: bool,
     },
     Constant {
         name: String,
-        t: Option<Type>,
-        value: Expr,
+        t: Option<LocatedType>,
+        value: LocatedExpr,
     },
     Alias {
-        t: Type,
+        t: LocatedType,
         name: String,
     },
     Import {
