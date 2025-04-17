@@ -17,6 +17,7 @@ tamago = { path = "tamago" }
 tamacro = { path = "tamago/tamacro" }
 snailquote = "~0.3"
 logos = "~0.15"
+colored = "~3.0"
 
 [workspace]
 members = [
