@@ -27,26 +27,16 @@ pub type ParseErrors = Vec<ParseError>;
 
 pub struct Parser<'source> {
     lexer: Lexer<'source, Token>,
-    source_path: &'source str,
-    source: &'source str,
     current_token: Option<Result<Token, LexError>>,
-
     ast: Vec<LocatedGlobalStmt>,
-
     errors: ParseErrors,
 }
 
 impl<'source> Parser<'source> {
-    pub fn new(
-        source: &'source str,
-        source_path: &'source str,
-        mut lexer: Lexer<'source, Token>,
-    ) -> Self {
+    pub fn new(mut lexer: Lexer<'source, Token>) -> Self {
         let current_token = lexer.next();
         Self {
             lexer,
-            source,
-            source_path,
             ast: vec![],
             current_token,
             errors: vec![],
@@ -1004,8 +994,8 @@ pub type Span = Range<usize>;
 
 #[derive(Debug, Clone)]
 pub struct Located<T> {
-    node: T,
-    span: Span,
+    pub node: T,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
