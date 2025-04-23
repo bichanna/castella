@@ -992,13 +992,13 @@ pub type LocatedGlobalStmt = Located<GlobalStmt>;
 pub type LocatedType = Located<Type>;
 pub type Span = Range<usize>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Located<T> {
     pub node: T,
     pub span: Span,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Expr {
     Int(i64),
     Double(f64),
@@ -1070,7 +1070,7 @@ pub enum Expr {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Stmt {
     Variable {
         name: String,
@@ -1108,7 +1108,7 @@ pub enum Stmt {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum GlobalStmt {
     Enum {
         name: String,
@@ -1149,7 +1149,7 @@ pub enum GlobalStmt {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Type {
     Void,
     Double,
