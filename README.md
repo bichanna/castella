@@ -1,5 +1,7 @@
 # Castella
 
+![Castella's logo](assets/logo.webp)
+
 Castella is essentially a reimagined version of C, infused with personal preferences for both semantics and syntax. Castella uses the [tamago](https://crates.io/crates/tamago) crate to generate its C output.
 
 ## Goals
