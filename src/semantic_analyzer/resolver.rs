@@ -6,7 +6,7 @@ use crate::semantic_analyzer::*;
 
 #[derive(Debug, Default)]
 pub struct Scope<'ast> {
-    names: HashMap<&'ast str, ()>,
+    names: HashMap<&'ast str, (Span, bool)>,
     enclosing: Option<Box<Scope<'ast>>>,
 }
 
@@ -32,6 +32,12 @@ impl<'ast> Resolver<'ast> {
     pub fn resolve(mut self) -> Result<Vec<Message>, (Vec<Message>, Vec<Message>)> {
         for stmt in self.ast {
             self.resolve_global_stmt(stmt);
+        }
+
+        for (name, (span, used)) in self.scope.names {
+            if !used && name != "main" {
+                self.warnings.push((span, format!("'{name}' is not used")));
+            }
         }
 
         if self.errors.is_empty() {
@@ -90,6 +96,8 @@ impl<'ast> Resolver<'ast> {
         for stmt in body {
             self.resolve_stmt(stmt);
         }
+
+        self.scope = *std::mem::take(&mut self.scope.enclosing).unwrap();
     }
 
     fn resolve_import(&mut self, span: &Span, name: &Option<String>, path: &String) {
@@ -273,16 +281,17 @@ impl<'ast> Scope<'ast> {
         match self.names.entry(name) {
             Entry::Occupied(_) => Err((span, format!("'{name}' is already declared"))),
             Entry::Vacant(entry) => {
-                entry.insert(());
+                entry.insert((span, false));
                 Ok(())
             }
         }
     }
 
-    pub fn has(&self, name: &'ast str, span: Span) -> Result<(), Message> {
+    pub fn has(&mut self, name: &'ast str, span: Span) -> Result<(), Message> {
         if self.names.contains_key(name) {
+            *self.names.get_mut(&name).unwrap() = (span, true);
             Ok(())
-        } else if let Some(scope) = &self.enclosing {
+        } else if let Some(scope) = &mut self.enclosing {
             scope.has(name, span)
         } else {
             Err((span, format!("'{name}' is not declared")))
