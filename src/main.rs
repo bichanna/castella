@@ -40,7 +40,7 @@ fn show_warnings(source: &str, source_path: &str, warnings: Vec<Message>) {
     }
 }
 
-fn compile(source: &str) -> Result<(String, Vec<Message>), (Vec<Message>, Vec<Message>)> {
+fn compile(source: &str) -> (Vec<Message>, Result<(), Vec<Message>>) {
     let mut warnings: Vec<Message> = vec![];
 
     let lexer = lexer::Token::lexer(source);
@@ -48,14 +48,22 @@ fn compile(source: &str) -> Result<(String, Vec<Message>), (Vec<Message>, Vec<Me
     let ast: Vec<parser::LocatedGlobalStmt>;
     match parser::Parser::new(lexer).parse() {
         Ok(res) => ast = res,
-        Err(errs) => return Err((vec![], errs)),
+        Err(errs) => return (warnings, Err(errs)),
     }
 
     match semantic_analyzer::resolver::Resolver::new(&ast).resolve() {
-        Ok(mut w) => warnings.append(&mut w),
-        Err((mut w, err)) => {
+        (mut w, Ok(())) => warnings.append(&mut w),
+        (mut w, Err(errs)) => {
             warnings.append(&mut w);
-            return Err((warnings, err));
+            return (warnings, Err(errs));
+        }
+    }
+
+    match semantic_analyzer::type_checker::TypeChecker::new(&ast).check() {
+        (mut w, Ok(())) => warnings.append(&mut w),
+        (mut w, Err(errs)) => {
+            warnings.append(&mut w);
+            return (warnings, Err(errs));
         }
     }
 
@@ -66,8 +74,8 @@ fn main() {
     // println!("filepath(line) Error: ");
 
     // let source = "func main(): void { (1 + 1.0) * 3; }";
-    let source = "func main(): void { age; Person { name = \"Nobu\", age = 18 }; }";
-    // let source = "func a(): void {} func main(): void { a = 10; }";
+    // let source = "func main(): void { age; Person { name = \"Nobu\", age = 18 }; }";
+    let source = "func a(): void {} func main(): void { b = 1; }";
 
     let lexer = lexer::Token::lexer(source);
     let res = parser::Parser::new(lexer).parse();
@@ -78,8 +86,12 @@ fn main() {
 
     let a = semantic_analyzer::resolver::Resolver::new(&res.unwrap()).resolve();
 
-    if let Err((_, err)) = a {
+    if let (w, Err(err)) = a {
+        show_warnings(source, "main.clla", w);
         show_errors(source, "main.clla", err);
+    } else {
+        let a = a.0;
+        show_warnings(source, "main.clla", a);
     }
 
     // println!("{:#?}", a);

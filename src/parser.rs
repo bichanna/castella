@@ -293,13 +293,17 @@ impl<'source> Parser<'source> {
                     }
                     Token::Int(n) => {
                         self.next();
+                        if n < 0 {
+                            self.create_error(format!("Expected array size to be non-negative"));
+                        }
                         num = n as usize;
                         false
                     }
                     _ => {
-                        return Err(
-                            self.create_error(format!("Expected an integer or {}", Token::Caret))
-                        )
+                        return Err(self.create_error(format!(
+                            "Expected an integer or {} for array type",
+                            Token::Caret
+                        )))
                     }
                 };
 
@@ -992,7 +996,7 @@ pub type LocatedGlobalStmt = Located<GlobalStmt>;
 pub type LocatedType = Located<Type>;
 pub type Span = Range<usize>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Located<T> {
     pub node: T,
     pub span: Span,
@@ -1076,7 +1080,7 @@ pub enum Stmt {
         name: String,
         t: Option<Type>,
         value: Option<LocatedExpr>,
-        is_static: bool,
+        private: bool,
         is_const: bool,
     },
     Expression {
@@ -1132,24 +1136,25 @@ pub enum GlobalStmt {
         name: String,
         t: Option<Type>,
         value: Option<LocatedExpr>,
-        is_static: bool,
+        private: bool,
     },
     Constant {
         name: String,
         t: Option<LocatedType>,
         value: LocatedExpr,
+        private: bool,
     },
     Alias {
         t: LocatedType,
         name: String,
     },
     Import {
-        name: Option<String>,
+        name: String,
         path: String,
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Void,
     Double,
@@ -1169,4 +1174,31 @@ pub enum Type {
     Array(usize, Box<Type>),
     DArray(Box<Type>),
     UserDefinedType(String),
+}
+
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Type::*;
+
+        match self {
+            Void => write!(f, "void"),
+            Double => write!(f, "double"),
+            Float => write!(f, "float"),
+            Char => write!(f, "char"),
+            Str => write!(f, "str"),
+            Int8 => write!(f, "i8"),
+            Int16 => write!(f, "i16"),
+            Int32 => write!(f, "i32"),
+            Int64 => write!(f, "i64"),
+            UInt8 => write!(f, "u8"),
+            UInt16 => write!(f, "u16"),
+            UInt32 => write!(f, "u32"),
+            UInt64 => write!(f, "u64"),
+            Bool => write!(f, "bool"),
+            Pointer(t) => write!(f, "^{t}"),
+            Array(l, t) => write!(f, "[{l}]{t}"),
+            DArray(t) => write!(f, "[^]{t}"),
+            UserDefinedType(n) => write!(f, "{n}"),
+        }
+    }
 }

@@ -5,7 +5,7 @@ use crate::parser::*;
 use crate::semantic_analyzer::*;
 
 #[derive(Debug, Default)]
-pub struct Scope<'ast> {
+struct Scope<'ast> {
     names: HashMap<&'ast str, (Span, bool)>,
     enclosing: Option<Box<Scope<'ast>>>,
 }
@@ -29,26 +29,27 @@ impl<'ast> Resolver<'ast> {
         }
     }
 
-    pub fn resolve(mut self) -> Result<Vec<Message>, (Vec<Message>, Vec<Message>)> {
+    pub fn resolve(mut self) -> (Vec<Message>, Result<(), Vec<Message>>) {
         for stmt in self.ast {
             self.resolve_global_stmt(stmt);
         }
 
         for (name, (span, used)) in self.scope.names {
             if !used && name != "main" {
+                // TODO: Give user a similar name that IS declared.
                 self.warnings.push((span, format!("'{name}' is not used")));
             }
         }
 
         if self.errors.is_empty() {
-            Ok(self.warnings)
+            (self.warnings, Ok(()))
         } else {
-            Err((self.warnings, self.errors))
+            (self.warnings, Err(self.errors))
         }
     }
 
     fn resolve_global_stmt(&mut self, stmt: &'ast LocatedGlobalStmt) {
-        use crate::parser::GlobalStmt::*;
+        use GlobalStmt::*;
 
         let Located { node: stmt, span } = stmt;
 
@@ -87,8 +88,8 @@ impl<'ast> Resolver<'ast> {
         let old_scope = std::mem::take(&mut self.scope);
         self.scope = Scope::new_with_scope(old_scope);
 
-        for p in params {
-            if let Err(err) = self.scope.declare(&p.0, p.1.span.clone()) {
+        for (name, t) in params {
+            if let Err(err) = self.scope.declare(name, t.span.clone()) {
                 self.errors.push(err);
             }
         }
@@ -100,7 +101,7 @@ impl<'ast> Resolver<'ast> {
         self.scope = *std::mem::take(&mut self.scope.enclosing).unwrap();
     }
 
-    fn resolve_import(&mut self, span: &Span, name: &Option<String>, path: &String) {
+    fn resolve_import(&mut self, span: &Span, name: &String, path: &String) {
         // TODO: Handle whether the module being imported even exists or not
         todo!()
     }

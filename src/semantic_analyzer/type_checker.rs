@@ -1,0 +1,282 @@
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+
+use crate::parser::*;
+use crate::semantic_analyzer::*;
+
+#[derive(Debug)]
+enum UserDefinedType<'ast> {
+    Enum {
+        span: &'ast Span,
+        variants: &'ast Vec<(String, Option<i64>)>,
+    },
+    Struct {
+        span: &'ast Span,
+        fields: &'ast Vec<(String, LocatedType)>,
+    },
+    Union {
+        span: &'ast Span,
+        fields: &'ast Vec<(String, LocatedType)>,
+    },
+    Function {
+        span: &'ast Span,
+        params: &'ast Vec<(String, LocatedType)>,
+        ret: &'ast LocatedType,
+    },
+    Alias {
+        span: &'ast Span,
+        t: &'ast LocatedType,
+    },
+    Import {
+        span: &'ast Span,
+        name: &'ast str,
+    },
+}
+
+#[derive(Debug, Default)]
+struct Types<'ast> {
+    types: HashMap<&'ast str, LocatedType>,
+    enclosing: Option<Box<Types<'ast>>>,
+}
+
+#[derive(Debug)]
+pub struct TypeChecker<'ast> {
+    ast: &'ast Vec<LocatedGlobalStmt>,
+    types: Types<'ast>,
+    user_def_types: HashMap<&'ast str, UserDefinedType<'ast>>,
+
+    errors: Vec<Message>,
+    warnings: Vec<Message>,
+}
+
+impl<'ast> TypeChecker<'ast> {
+    pub fn new(ast: &'ast Vec<LocatedGlobalStmt>) -> Self {
+        Self {
+            ast,
+            types: Types::new(),
+            user_def_types: HashMap::new(),
+            errors: vec![],
+            warnings: vec![],
+        }
+    }
+
+    pub fn check(mut self) -> (Vec<Message>, Result<(), Vec<Message>>) {
+        for stmt in self.ast {
+            self.check_global_stmt(stmt);
+        }
+
+        if self.errors.is_empty() {
+            (self.warnings, Ok(()))
+        } else {
+            (self.warnings, Err(self.errors))
+        }
+    }
+
+    fn check_global_stmt(&mut self, stmt: &'ast LocatedGlobalStmt) {
+        use GlobalStmt::*;
+
+        let Located { node: gstmt, span } = stmt;
+
+        match gstmt {
+            Enum { name, .. }
+            | Struct { name, .. }
+            | Union { name, .. }
+            | Alias { name, .. }
+            | Import { name, .. } => {
+                let _ = self.define_user_type(name, stmt);
+            }
+
+            Function {
+                name,
+                params,
+                ret,
+                body,
+            } => {
+                if let Err(w) = self.types.declare(
+                    name,
+                    Located {
+                        node: Type::UserDefinedType(name.to_string()),
+                        span: span.clone(),
+                    },
+                ) {
+                    self.warnings.push(w);
+                }
+
+                let _ = self.define_user_type(name, stmt);
+
+                let old_types = std::mem::take(&mut self.types);
+                self.types = Types::new_with_types(old_types);
+
+                for (name, t) in params {
+                    if let Err(err) = self.types.declare(name, t.clone()) {
+                        self.errors.push(err);
+                    }
+                }
+
+                self.check_func_body(ret, body);
+            }
+
+            Variable {
+                name,
+                t,
+                value: Some(value),
+                ..
+            } => {
+                let var_t: Type;
+                if let Some(t) = t {
+                    var_t = t.clone();
+                    let given_t: Type;
+                    match self.check_expr(value) {
+                        Err(err) => {
+                            self.errors.push(err);
+                            return;
+                        }
+                        Ok(t) => given_t = t,
+                    }
+
+                    if var_t != given_t {
+                        self.errors.push((
+                            span.clone(),
+                            format!("Expected '{var_t}' but got '{given_t}'"),
+                        ));
+                        return;
+                    }
+                } else {
+                    match self.check_expr(value) {
+                        Err(err) => {
+                            self.errors.push(err);
+                            return;
+                        }
+                        Ok(t) => var_t = t,
+                    }
+                }
+
+                if let Err(err) = self.types.declare(
+                    name,
+                    Located {
+                        node: var_t,
+                        span: span.clone(),
+                    },
+                ) {
+                    self.errors.push(err);
+                }
+            }
+
+            Variable {
+                name,
+                t,
+                value: None,
+                ..
+            } => {
+                if let Some(t) = t {
+                    if let Err(err) = self.types.declare(
+                        name,
+                        Located {
+                            node: t.clone(),
+                            span: span.clone(),
+                        },
+                    ) {
+                        self.errors.push(err);
+                    }
+                } else {
+                    self.errors.push((
+                        span.clone(),
+                        format!("Expected an explicit type but got nothing"),
+                    ));
+                }
+            }
+
+            Constant { name, t, value, .. } => {
+                todo!() // TODO: Only allow compile-time expressions
+            }
+        }
+    }
+
+    fn check_expr(&self, expr: &'ast LocatedExpr) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_func_body(&mut self, ret: &'ast LocatedType, body: &'ast Vec<LocatedStmt>) {
+        todo!()
+    }
+
+    fn define_user_type(
+        &mut self,
+        name: &'ast str,
+        stmt: &'ast LocatedGlobalStmt,
+    ) -> Result<(), Message> {
+        let span = stmt.span.clone();
+        let t: UserDefinedType<'ast>;
+
+        if let Ok(ty) = UserDefinedType::<'ast>::try_from(stmt) {
+            t = ty;
+        } else {
+            todo!(); // TODO: probably just ignore?
+                     // return Err((span, format!("")));
+        }
+
+        match self.user_def_types.entry(name) {
+            Entry::Occupied(_) => Err((span, format!("Type '{name}' is already declared"))),
+            Entry::Vacant(entry) => {
+                entry.insert(t);
+                Ok(())
+            }
+        }
+    }
+}
+
+impl<'ast> Types<'ast> {
+    pub fn new() -> Self {
+        Self {
+            types: HashMap::new(),
+            enclosing: None,
+        }
+    }
+
+    pub fn new_with_types(types: Types<'ast>) -> Self {
+        Self {
+            types: HashMap::new(),
+            enclosing: Some(Box::new(types)),
+        }
+    }
+
+    pub fn declare(&mut self, name: &'ast str, t: LocatedType) -> Result<(), Message> {
+        match self.types.entry(name) {
+            Entry::Occupied(_) => Err((t.span.clone(), format!("'{name}' is already declared"))),
+            Entry::Vacant(entry) => {
+                entry.insert(t);
+                Ok(())
+            }
+        }
+    }
+
+    pub fn is_declared(&mut self, name: &'ast str, span: Span) -> Result<(), Message> {
+        if self.types.contains_key(name) {
+            Ok(())
+        } else if let Some(types) = &mut self.enclosing {
+            types.is_declared(name, span)
+        } else {
+            Err((span, format!("'{name}' is not declared")))
+        }
+    }
+}
+
+impl<'ast> TryFrom<&'ast LocatedGlobalStmt> for UserDefinedType<'ast> {
+    type Error = ();
+
+    fn try_from(value: &'ast LocatedGlobalStmt) -> Result<Self, Self::Error> {
+        use GlobalStmt::*;
+
+        let Located { span, node: value } = value;
+
+        match value {
+            Enum { variants, .. } => Ok(UserDefinedType::Enum { span, variants }),
+            Struct { fields, .. } => Ok(UserDefinedType::Struct { span, fields }),
+            Union { fields, .. } => Ok(UserDefinedType::Union { span, fields }),
+            Function { params, ret, .. } => Ok(UserDefinedType::Function { span, params, ret }),
+            Alias { t, .. } => Ok(UserDefinedType::Alias { span, t }),
+            Import { name, .. } => Ok(UserDefinedType::Import { span, name }),
+            _ => Err(()),
+        }
+    }
+}
