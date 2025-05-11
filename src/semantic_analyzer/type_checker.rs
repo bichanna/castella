@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use crate::parser::*;
 use crate::semantic_analyzer::*;
 
+type ReturnType = Option<(Type, bool)>;
+
 #[derive(Debug)]
 enum UserDefinedType<'ast> {
     Enum {
@@ -192,12 +194,196 @@ impl<'ast> TypeChecker<'ast> {
         }
     }
 
+    fn check_func_body(&mut self, ret: &'ast LocatedType, body: &'ast Vec<LocatedStmt>) {
+        todo!()
+    }
+
+    /// true -> full return
+    /// false -> partial return
+    /// none -> no return (same as void)
+    fn check_stmt(
+        &mut self,
+        expected_ret: &'ast LocatedType,
+        stmt: &'ast LocatedStmt,
+    ) -> Result<Option<bool>, Message> {
+        use Stmt::*;
+
+        let Located { node: s, span } = stmt;
+
+        match s {
+            Variable {
+                name,
+                t,
+                value: Some(value),
+                ..
+            } => {
+                let var_t: Type;
+                if let Some(t) = t {
+                    var_t = t.clone();
+                    let given_t = self.check_expr(value)?;
+
+                    if var_t != given_t {
+                        return Err((
+                            span.clone(),
+                            format!("Expected '{var_t}' but got '{given_t}'"),
+                        ));
+                    }
+                } else {
+                    var_t = self.check_expr(value)?;
+                }
+
+                self.types.declare(
+                    name,
+                    Located {
+                        node: var_t,
+                        span: span.clone(),
+                    },
+                )?;
+
+                Ok(None)
+            }
+
+            Variable {
+                name,
+                t,
+                value: None,
+                ..
+            } => {
+                if let Some(t) = t {
+                    self.types.declare(
+                        name,
+                        Located {
+                            node: t.clone(),
+                            span: span.clone(),
+                        },
+                    )?;
+
+                    Ok(None)
+                } else {
+                    Err((
+                        span.clone(),
+                        format!("Expected an explicit type but got nothing"),
+                    ))
+                }
+            }
+
+            Expression { expr } => {
+                self.check_expr(expr)?;
+                Ok(None)
+            }
+
+            Return { value } => {
+                if let Some(val) = value {
+                    let t = self.check_expr(val)?;
+                    if expected_ret.node == t {
+                        Ok(Some(true))
+                    } else {
+                        Err((
+                            span.clone(),
+                            format!(
+                                "Expected {} as return type but got {}",
+                                expected_ret.node, t
+                            ),
+                        ))
+                    }
+                } else {
+                    if expected_ret.node == Type::Void {
+                        Ok(Some(true))
+                    } else {
+                        Err((
+                            span.clone(),
+                            format!(
+                                "Expected {} as return type but got {}",
+                                expected_ret.node,
+                                Type::Void
+                            ),
+                        ))
+                    }
+                }
+            }
+
+            Break | Continue => Ok(None),
+
+            If { cond, then, other } => {
+                let cond_t = self.check_expr(cond)?;
+                if cond_t != Type::Bool {
+                    return Err((
+                        span.clone(),
+                        format!("If condition must be boolean, but got {}", cond_t),
+                    ));
+                }
+
+                let then_returns = self.check_branch(expected_ret, then)?;
+
+                let mut else_returns = false;
+                if let Some(other) = other {
+                    else_returns = self.check_branch(expected_ret, other)?;
+                }
+
+                if then_returns && else_returns {
+                    // both then & else have a return stmt
+                    Ok(Some(true))
+                } else if !then_returns && !else_returns {
+                    // neither then or else have a return stmt
+                    Ok(None)
+                } else {
+                    // either then or else has a return stmt
+                    Ok(Some(false))
+                }
+            }
+
+            While {
+                cond,
+                body,
+                do_while,
+            } => {
+                todo!()
+            }
+
+            Defer { body } => {
+                todo!()
+            }
+
+            Destroy { expr } => {
+                let t = self.check_expr(expr);
+                todo!();
+            }
+
+            Free { expr } => {
+                let t = self.check_expr(expr);
+                todo!();
+            }
+        }
+    }
+
     fn check_expr(&self, expr: &'ast LocatedExpr) -> Result<Type, Message> {
         todo!()
     }
 
-    fn check_func_body(&mut self, ret: &'ast LocatedType, body: &'ast Vec<LocatedStmt>) {
-        todo!()
+    /// true -> the branch has a return
+    /// false -> the branch doesn't have a return
+    fn check_branch(
+        &mut self,
+        expected_ret: &'ast LocatedType,
+        branch: &'ast Vec<LocatedStmt>,
+    ) -> Result<bool, Message> {
+        let mut result: Result<bool, Message> = Ok(false);
+        for stmt in branch {
+            if result != Ok(false) {
+                self.warnings
+                    .push((stmt.span.clone(), format!("Unreachable code after return")));
+                break;
+            }
+
+            match self.check_stmt(expected_ret, stmt)? {
+                Some(p) if p => {
+                    result = Ok(true);
+                }
+                _ => {}
+            }
+        }
+
+        result
     }
 
     fn define_user_type(
