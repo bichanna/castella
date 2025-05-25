@@ -13,4 +13,6 @@ Castella is essentially a reimagined version of C, infused with personal prefere
 - Full manual memory management, just like in C, but with some niceties
 - Built-in implementations of dynamic arrays, hash maps, and other useful things
 - Use functions, types, and other stuff from C without too much fuss
-- Not too many features being introduced
+- Generics!
+- Run some pretty awesome code at compile-time (inspired by [this post](https://0x44.xyz/blog/comptime-1/))
+- Not too many features being introduced (except for the extensive compile-time capabilities)
