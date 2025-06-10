@@ -233,7 +233,7 @@ impl<'source> Parser<'source> {
                 self.current()?,
                 Token::SemiColon,
                 self.lexer.span(),
-                "Expected {} after enum variant but got {}",
+                "Expected {} after struct field but got {}",
                 Token::SemiColon,
                 self.current()?
             );
@@ -255,7 +255,88 @@ impl<'source> Parser<'source> {
     }
 
     fn parse_union(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
-        todo!()
+        let span = self.lexer.span();
+        self.next();
+
+        let Token::Ident(union_name) = expect!(
+            self,
+            self.current()?,
+            Token::Ident(..),
+            self.lexer.span(),
+            "Expected name for union but got {}",
+            self.current()?
+        ) else {
+            unreachable!();
+        };
+
+        self.next();
+
+        expect!(
+            self,
+            self.current()?,
+            Token::LeftBrace,
+            self.lexer.span(),
+            "Expected {} after union but got {}",
+            Token::LeftBrace,
+            self.current()?
+        );
+
+        self.next();
+
+        let mut fields = vec![];
+
+        while !matches!(self.current()?, Token::RightBrace) {
+            let Token::Ident(field_name) = expect!(
+                self,
+                self.current()?,
+                Token::Ident(..),
+                self.lexer.span(),
+                "Expected field name but got {}",
+                self.current()?
+            ) else {
+                unreachable!();
+            };
+
+            self.next();
+
+            expect!(
+                self,
+                self.current()?,
+                Token::Colon,
+                self.lexer.span(),
+                "Expected {} after field name but got {}",
+                Token::Colon,
+                self.current()?
+            );
+
+            self.next();
+
+            let field_type = self.parse_type()?;
+
+            expect!(
+                self,
+                self.current()?,
+                Token::SemiColon,
+                self.lexer.span(),
+                "Expected {} after union field but got {}",
+                Token::SemiColon,
+                self.current()?
+            );
+
+            self.next();
+
+            fields.push((field_name, field_type));
+        }
+
+        self.next();
+
+        Ok(Located {
+            node: GlobalStmt::Union {
+                fields,
+                name: union_name,
+            },
+            span,
+        })
     }
 
     fn parse_func(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
