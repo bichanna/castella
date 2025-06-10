@@ -294,7 +294,12 @@ impl<'ast> Scope<'ast> {
         } else if let Some(scope) = &mut self.enclosing {
             scope.has(name, span)
         } else {
-            // TODO: Give user a similar name that IS declared.
+            let threshold = 1;
+            for n in self.names.keys() {
+                if threshold >= edit_distance(n, name) {
+                    return Err((span, format!("By '{name}', did you mean '{n}'?")));
+                }
+            }
             Err((span, format!("'{name}' is not declared")))
         }
     }

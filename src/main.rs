@@ -75,9 +75,9 @@ fn main() {
 
     // let source = "func main(): void { return (1 + 1.0) * 3; }";
     // let source = "func main(): void { age; Person { name = \"Nobu\", age = 18 }; }";
-    // let source = "func a(): void {} func main(): void { free a; }";
+    let source = "func abc(): void {} func main(): void { free acb; }";
     // let source = "enum Week { Mon; Tue; Wed; Thur=4; Fri; }";
-    let source = "alias Age = int; union Person { name: str; age: Age; }";
+    // let source = "alias Age = int; union Person { name: str; age: Age; }";
 
     let lexer = lexer::Token::lexer(source);
     let res = parser::Parser::new(lexer).parse();
