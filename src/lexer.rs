@@ -196,6 +196,9 @@ pub enum Token {
     #[token("while")]
     While,
 
+    #[token("do")]
+    Do,
+
     #[token("in")]
     In,
 
@@ -334,6 +337,7 @@ impl std::fmt::Display for Token {
             False => write!(f, "'false'"),
             For => write!(f, "'for'"),
             While => write!(f, "'while'"),
+            Do => write!(f, "'do'"),
             In => write!(f, "'in'"),
             Return => write!(f, "'return'"),
             Defer => write!(f, "'defer'"),

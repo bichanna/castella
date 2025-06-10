@@ -366,14 +366,15 @@ impl<'source> Parser<'source> {
         match self.current()? {
             Token::Let => todo!(),
             Token::Const => todo!(),
-            Token::Return => todo!(),
-            Token::Break => todo!(),
-            Token::Continue => todo!(),
-            Token::If => todo!(),
-            Token::While => todo!(),
-            Token::Defer => todo!(),
-            Token::Destroy => todo!(),
-            Token::Free => todo!(),
+            Token::Return => self.parse_return(),
+            Token::Break => self.parse_break(),
+            Token::Continue => self.parse_continue(),
+            Token::If => self.parse_if(),
+            Token::While => self.parse_while(),
+            Token::Do => self.parse_do_while(),
+            Token::Defer => self.parse_defer(),
+            Token::Destroy => self.parse_destroy(),
+            Token::Free => self.parse_free(),
             _ => {
                 let expr = self.parse_expression()?;
                 let span = expr.span.clone();
@@ -396,6 +397,287 @@ impl<'source> Parser<'source> {
                 })
             }
         }
+    }
+
+    fn parse_break(&mut self) -> Result<LocatedStmt, ParseError> {
+        let span = self.lexer.span();
+        self.next();
+
+        expect!(
+            self,
+            self.current()?,
+            Token::SemiColon,
+            self.lexer.span(),
+            "Expected {} after break but got {}",
+            Token::SemiColon,
+            self.current()?
+        );
+
+        self.next();
+
+        Ok(Located {
+            node: Stmt::Break,
+            span,
+        })
+    }
+
+    fn parse_continue(&mut self) -> Result<LocatedStmt, ParseError> {
+        let span = self.lexer.span();
+        self.next();
+
+        expect!(
+            self,
+            self.current()?,
+            Token::SemiColon,
+            self.lexer.span(),
+            "Expected {} after continue but got {}",
+            Token::SemiColon,
+            self.current()?
+        );
+
+        self.next();
+
+        Ok(Located {
+            node: Stmt::Continue,
+            span,
+        })
+    }
+
+    fn parse_return(&mut self) -> Result<LocatedStmt, ParseError> {
+        let span = self.lexer.span();
+        self.next();
+
+        let value = if matches!(self.current()?, Token::SemiColon) {
+            None
+        } else {
+            Some(self.parse_expression()?)
+        };
+
+        expect!(
+            self,
+            self.current()?,
+            Token::SemiColon,
+            self.lexer.span(),
+            "Expected {} after return but got {}",
+            Token::SemiColon,
+            self.current()?
+        );
+
+        self.next();
+
+        Ok(Located {
+            node: Stmt::Return { value },
+            span,
+        })
+    }
+
+    fn parse_if(&mut self) -> Result<LocatedStmt, ParseError> {
+        let span = self.lexer.span();
+        self.next();
+
+        expect!(
+            self,
+            self.current()?,
+            Token::LeftParen,
+            self.lexer.span(),
+            "Expected {} before condition but got {}",
+            Token::LeftParen,
+            self.current()?
+        );
+
+        self.next();
+
+        let cond = self.parse_expression()?;
+
+        expect!(
+            self,
+            self.current()?,
+            Token::RightParen,
+            self.lexer.span(),
+            "Expected {} after condition but got {}",
+            Token::RightParen,
+            self.current()?
+        );
+
+        self.next();
+
+        let then = if matches!(self.current()?, Token::LeftBrace) {
+            self.parse_curly_body()?
+        } else {
+            vec![self.parse_statement()?]
+        };
+
+        let mut other = None;
+
+        if matches!(self.current()?, Token::Else) {
+            self.next();
+            other = Some(if matches!(self.current()?, Token::LeftBrace) {
+                self.parse_curly_body()?
+            } else {
+                vec![self.parse_statement()?]
+            });
+        }
+
+        Ok(Located {
+            node: Stmt::If { cond, then, other },
+            span,
+        })
+    }
+
+    fn parse_while(&mut self) -> Result<LocatedStmt, ParseError> {
+        let span = self.lexer.span();
+        self.next();
+
+        expect!(
+            self,
+            self.current()?,
+            Token::LeftParen,
+            self.lexer.span(),
+            "Expected {} before condition but got {}",
+            Token::LeftParen,
+            self.current()?
+        );
+
+        self.next();
+
+        let cond = self.parse_expression()?;
+
+        expect!(
+            self,
+            self.current()?,
+            Token::RightParen,
+            self.lexer.span(),
+            "Expected {} after condition but got {}",
+            Token::RightParen,
+            self.current()?
+        );
+
+        self.next();
+
+        let body = if matches!(self.current()?, Token::LeftBrace) {
+            self.parse_curly_body()?
+        } else {
+            vec![self.parse_statement()?]
+        };
+
+        Ok(Located {
+            node: Stmt::While {
+                cond,
+                body,
+                do_while: false,
+            },
+            span,
+        })
+    }
+
+    fn parse_do_while(&mut self) -> Result<LocatedStmt, ParseError> {
+        let span = self.lexer.span();
+        self.next();
+
+        let body = if matches!(self.current()?, Token::LeftBrace) {
+            self.parse_curly_body()?
+        } else {
+            vec![self.parse_statement()?]
+        };
+
+        expect!(
+            self,
+            self.current()?,
+            Token::LeftParen,
+            self.lexer.span(),
+            "Expected {} before condition but got {}",
+            Token::LeftParen,
+            self.current()?
+        );
+
+        self.next();
+
+        let cond = self.parse_expression()?;
+
+        expect!(
+            self,
+            self.current()?,
+            Token::RightParen,
+            self.lexer.span(),
+            "Expected {} after condition but got {}",
+            Token::RightParen,
+            self.current()?
+        );
+
+        self.next();
+
+        Ok(Located {
+            node: Stmt::While {
+                cond,
+                body,
+                do_while: true,
+            },
+            span,
+        })
+    }
+
+    fn parse_defer(&mut self) -> Result<LocatedStmt, ParseError> {
+        let span = self.lexer.span();
+        self.next();
+
+        let body = if matches!(self.current()?, Token::LeftBrace) {
+            self.parse_curly_body()?
+        } else {
+            vec![self.parse_statement()?]
+        };
+
+        Ok(Located {
+            node: Stmt::Defer { body },
+            span,
+        })
+    }
+
+    fn parse_destroy(&mut self) -> Result<LocatedStmt, ParseError> {
+        let span = self.lexer.span();
+        self.next();
+
+        let expr = self.parse_expression()?;
+
+        expect!(
+            self,
+            self.current()?,
+            Token::SemiColon,
+            self.lexer.span(),
+            "Expected {} after body but got {}",
+            Token::SemiColon,
+            self.current()?
+        );
+
+        self.next();
+
+        Ok(Located {
+            node: Stmt::Destroy { expr },
+            span,
+        })
+    }
+
+    fn parse_free(&mut self) -> Result<LocatedStmt, ParseError> {
+        let span = self.lexer.span();
+        self.next();
+
+        let expr = self.parse_expression()?;
+
+        expect!(
+            self,
+            self.current()?,
+            Token::SemiColon,
+            self.lexer.span(),
+            "Expected {} after body but got {}",
+            Token::SemiColon,
+            self.current()?
+        );
+
+        self.next();
+
+        Ok(Located {
+            node: Stmt::Free { expr },
+            span,
+        })
     }
 
     fn parse_expression(&mut self) -> Result<LocatedExpr, ParseError> {
