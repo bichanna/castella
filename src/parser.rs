@@ -80,11 +80,178 @@ impl<'source> Parser<'source> {
     }
 
     fn parse_enum(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
-        todo!()
+        let span = self.lexer.span();
+        self.next();
+
+        let Token::Ident(enum_name) = expect!(
+            self,
+            self.current()?,
+            Token::Ident(..),
+            self.lexer.span(),
+            "Expected name for enum but got {}",
+            self.current()?
+        ) else {
+            unreachable!();
+        };
+
+        self.next();
+
+        expect!(
+            self,
+            self.current()?,
+            Token::LeftBrace,
+            self.lexer.span(),
+            "Expected {} after enum but got {}",
+            Token::LeftBrace,
+            self.current()?
+        );
+
+        self.next();
+
+        let mut variants = vec![];
+
+        while !matches!(self.current()?, Token::RightBrace) {
+            let Token::Ident(var_name) = expect!(
+                self,
+                self.current()?,
+                Token::Ident(..),
+                self.lexer.span(),
+                "Expected an identifier but got {}",
+                self.current()?
+            ) else {
+                unreachable!();
+            };
+
+            self.next();
+
+            let var_num = if matches!(self.current()?, Token::Eq) {
+                self.next();
+                let Token::Int(num) = expect!(
+                    self,
+                    self.current()?,
+                    Token::Int(..),
+                    self.lexer.span(),
+                    "Expected an integer but got {}",
+                    self.current()?
+                ) else {
+                    unreachable!();
+                };
+                self.next();
+
+                Some(num)
+            } else {
+                None
+            };
+
+            expect!(
+                self,
+                self.current()?,
+                Token::SemiColon,
+                self.lexer.span(),
+                "Expected {} after enum variant but got {}",
+                Token::SemiColon,
+                self.current()?
+            );
+
+            self.next();
+
+            variants.push((var_name, var_num));
+        }
+
+        self.next();
+
+        Ok(Located {
+            node: GlobalStmt::Enum {
+                variants,
+                name: enum_name,
+            },
+            span,
+        })
     }
 
     fn parse_struct(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
-        todo!()
+        let span = self.lexer.span();
+        self.next();
+
+        let Token::Ident(struct_name) = expect!(
+            self,
+            self.current()?,
+            Token::Ident(..),
+            self.lexer.span(),
+            "Expected name for struct but got {}",
+            self.current()?
+        ) else {
+            unreachable!();
+        };
+
+        self.next();
+
+        expect!(
+            self,
+            self.current()?,
+            Token::LeftBrace,
+            self.lexer.span(),
+            "Expected {} after struct but got {}",
+            Token::LeftBrace,
+            self.current()?
+        );
+
+        self.next();
+
+        let mut fields = vec![];
+
+        while !matches!(self.current()?, Token::RightBrace) {
+            let Token::Ident(field_name) = expect!(
+                self,
+                self.current()?,
+                Token::Ident(..),
+                self.lexer.span(),
+                "Expected field name but got {}",
+                self.current()?
+            ) else {
+                unreachable!();
+            };
+
+            self.next();
+
+            expect!(
+                self,
+                self.current()?,
+                Token::Colon,
+                self.lexer.span(),
+                "Expected {} after field name but got {}",
+                Token::Colon,
+                self.current()?
+            );
+
+            self.next();
+
+            let field_type = self.parse_type()?;
+
+            expect!(
+                self,
+                self.current()?,
+                Token::SemiColon,
+                self.lexer.span(),
+                "Expected {} after enum variant but got {}",
+                Token::SemiColon,
+                self.current()?
+            );
+
+            self.next();
+
+            fields.push((field_name, field_type));
+        }
+
+        self.next();
+
+        Ok(Located {
+            node: GlobalStmt::Struct {
+                fields,
+                name: struct_name,
+            },
+            span,
+        })
     }
 
     fn parse_union(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
