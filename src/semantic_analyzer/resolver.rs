@@ -36,7 +36,6 @@ impl<'ast> Resolver<'ast> {
 
         for (name, (span, used)) in self.scope.names {
             if !used && name != "main" {
-                // TODO: Give user a similar name that IS declared.
                 self.warnings.push((span, format!("'{name}' is not used")));
             }
         }
@@ -58,7 +57,8 @@ impl<'ast> Resolver<'ast> {
             | Struct { name, .. }
             | Union { name, .. }
             | Variable { name, .. }
-            | Constant { name, .. } => {
+            | Constant { name, .. }
+            | Alias { name, .. } => {
                 if let Err(err) = self.scope.declare(&name, span.clone()) {
                     self.errors.push(err);
                 }
@@ -70,7 +70,6 @@ impl<'ast> Resolver<'ast> {
                 body,
             } => self.resolve_func(span, name, params, body),
             Import { name, path } => self.resolve_import(span, name, path),
-            Alias { .. } => {} // Will be handled in the type checker
         }
     }
 
@@ -295,6 +294,7 @@ impl<'ast> Scope<'ast> {
         } else if let Some(scope) = &mut self.enclosing {
             scope.has(name, span)
         } else {
+            // TODO: Give user a similar name that IS declared.
             Err((span, format!("'{name}' is not declared")))
         }
     }

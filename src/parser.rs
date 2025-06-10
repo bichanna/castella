@@ -380,7 +380,52 @@ impl<'source> Parser<'source> {
     }
 
     fn parse_alias(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
-        todo!()
+        let span = self.lexer.span();
+        self.next();
+
+        let Token::Ident(name) = expect!(
+            self,
+            self.current()?,
+            Token::Ident(..),
+            self.lexer.span(),
+            "Expected an identifier after alias but got {}",
+            self.current()?
+        ) else {
+            unreachable!();
+        };
+
+        self.next();
+
+        expect!(
+            self,
+            self.current()?,
+            Token::Eq,
+            self.lexer.span(),
+            "Expected {} but got {} after alias name",
+            Token::Eq,
+            self.current()?
+        );
+
+        self.next();
+
+        let t = self.parse_type()?;
+
+        expect!(
+            self,
+            self.current()?,
+            Token::SemiColon,
+            self.lexer.span(),
+            "Expected {} but got {}",
+            Token::SemiColon,
+            self.current()?
+        );
+
+        self.next();
+
+        Ok(Located {
+            node: GlobalStmt::Alias { name, t },
+            span,
+        })
     }
 
     fn parse_import(&mut self) -> Result<LocatedGlobalStmt, ParseError> {
