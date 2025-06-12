@@ -1,6 +1,8 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
+use tamago::{AssignOp, BinOp, UnaryOp};
+
 use crate::parser::*;
 use crate::semantic_analyzer::*;
 
@@ -198,9 +200,9 @@ impl<'ast> TypeChecker<'ast> {
         todo!()
     }
 
-    /// true -> full return
-    /// false -> partial return
-    /// none -> no return (same as void)
+    /// Some(true) -> full return
+    /// Some(false) -> partial return
+    /// None -> no return (same as void)
     fn check_stmt(
         &mut self,
         expected_ret: &'ast LocatedType,
@@ -309,7 +311,7 @@ impl<'ast> TypeChecker<'ast> {
                 if cond_t != Type::Bool {
                     return Err((
                         span.clone(),
-                        format!("If condition must be boolean, but got {}", cond_t),
+                        format!("If condition must be boolean but got {}", cond_t),
                     ));
                 }
 
@@ -332,31 +334,195 @@ impl<'ast> TypeChecker<'ast> {
                 }
             }
 
-            While {
-                cond,
-                body,
-                do_while,
-            } => {
-                todo!()
+            While { cond, body, .. } => {
+                let cond_t = self.check_expr(cond)?;
+                if cond_t != Type::Bool {
+                    return Err((
+                        span.clone(),
+                        format!("While condition must be boolean but got {}", cond_t),
+                    ));
+                }
+
+                if self.check_branch(expected_ret, body)? {
+                    Ok(Some(false))
+                } else {
+                    Ok(None)
+                }
             }
 
             Defer { body } => {
-                todo!()
+                for stmt in body {
+                    if matches!(self.check_stmt(expected_ret, stmt)?, Some(..)) {
+                        return Err((
+                            stmt.span.clone(),
+                            "No return statement is allowed in defer body".to_string(),
+                        ));
+                    }
+                }
+                Ok(None)
             }
 
             Destroy { expr } => {
                 let t = self.check_expr(expr);
-                todo!();
+                Ok(None)
             }
 
             Free { expr } => {
                 let t = self.check_expr(expr);
-                todo!();
+                Ok(None)
             }
         }
     }
 
     fn check_expr(&self, expr: &'ast LocatedExpr) -> Result<Type, Message> {
+        use Expr::*;
+
+        let Located { node: e, span } = expr;
+
+        match e {
+            Int(..) => Ok(Type::Int32),
+            Double(..) => Ok(Type::Double),
+            Bool(..) => Ok(Type::Bool),
+            Char(..) => Ok(Type::Char),
+            Str(..) => Ok(Type::Str),
+            Ident(name) => todo!(),
+            Binary { left, op, right } => self.check_binary(span, left, op, right),
+            Parenthesized { expr } => self.check_expr(expr),
+            Unary { op, expr } => self.check_unary(span, op, expr),
+            Assign { lvalue, op, value } => self.check_assign(span, lvalue, op, value),
+            Ternary { cond, lexpr, rexpr } => self.check_ternary(span, lexpr, rexpr),
+            FnCall { name, args } => self.check_fn_call(span, name, args),
+            MemAccess { expr, member } => self.check_mem_access(span, expr, member),
+            EnumVarAccess { ident, variant } => self.check_enum_var_access(span, ident, variant),
+            ArrIndex { arr, idx } => self.check_arr_index(span, arr, idx),
+            Cast { t, expr } => self.check_cast(span, t, expr),
+            Sizeof { t } => self.check_sizeof(span, t),
+            InitArr { elems } => self.check_init_arr(span, elems),
+            InitArrDesignated { idxs, elems } => self.check_init_arr_designated(span, idxs, elems),
+            InitStruct { ident, args } => self.check_init_struct(span, ident, args),
+            Make { t } => self.check_make(span, t),
+            New { t } => self.check_new(span, t),
+        }
+    }
+
+    fn check_new(&self, span: &'ast Span, t: &'ast Type) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_make(&self, span: &'ast Span, t: &'ast Type) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_init_struct(
+        &self,
+        span: &'ast Span,
+        ident: &'ast String,
+        args: &'ast Vec<(String, LocatedExpr)>,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_init_arr_designated(
+        &self,
+        span: &'ast Span,
+        idx: &'ast Vec<usize>,
+        elems: &'ast Vec<LocatedExpr>,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_init_arr(
+        &self,
+        span: &'ast Span,
+        elems: &'ast Vec<LocatedExpr>,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_sizeof(&self, span: &'ast Span, t: &'ast Type) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_cast(
+        &self,
+        span: &'ast Span,
+        t: &'ast LocatedType,
+        expr: &'ast LocatedExpr,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_arr_index(
+        &self,
+        span: &'ast Span,
+        args: &'ast LocatedExpr,
+        idx: &'ast LocatedExpr,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_enum_var_access(
+        &self,
+        span: &'ast Span,
+        ident: &'ast String,
+        variant: &'ast String,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_mem_access(
+        &self,
+        span: &'ast Span,
+        expr: &'ast LocatedExpr,
+        member: &'ast String,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_fn_call(
+        &self,
+        span: &'ast Span,
+        name: &'ast LocatedExpr,
+        args: &'ast Vec<LocatedExpr>,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_ternary(
+        &self,
+        span: &'ast Span,
+        lexpr: &'ast LocatedExpr,
+        rexpr: &'ast LocatedExpr,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_binary(
+        &self,
+        span: &'ast Span,
+        left: &'ast LocatedExpr,
+        op: &'ast BinOp,
+        right: &'ast LocatedExpr,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_unary(
+        &self,
+        span: &'ast Span,
+        op: &'ast UnaryOp,
+        expr: &'ast LocatedExpr,
+    ) -> Result<Type, Message> {
+        todo!()
+    }
+
+    fn check_assign(
+        &self,
+        span: &'ast Span,
+        lvalue: &'ast LocatedExpr,
+        op: &'ast AssignOp,
+        value: &'ast LocatedExpr,
+    ) -> Result<Type, Message> {
         todo!()
     }
 
